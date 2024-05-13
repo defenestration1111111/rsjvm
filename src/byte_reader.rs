@@ -7,14 +7,15 @@ pub enum ReadError {
     UnexpectedEOF,
 }
 
-struct ClassReader<'a> {
+#[derive(Debug)]
+pub struct ByteReader<'a> {
     buf: &'a [u8],
     pos: usize,
 }
 
-impl<'a> ClassReader<'a> {
-    fn new(data: &'a [u8]) -> Self {
-        ClassReader { buf: data, pos: 0}
+impl<'a> ByteReader<'a> {
+    pub fn new(data: &'a [u8]) -> Self {
+        ByteReader { buf: data, pos: 0}
     }
 
     fn read_bytes(&mut self, size: usize) -> Result<&'a [u8]> {
@@ -26,17 +27,17 @@ impl<'a> ClassReader<'a> {
         }
     }
 
-    fn read_u8(&mut self) -> Result<u8> {
+    pub fn read_u8(&mut self) -> Result<u8> {
         let slice = self.read_bytes(std::mem::size_of::<u8>())?;
         Ok(u8::from_be_bytes([slice[0]]))
     }
 
-    fn read_u16(&mut self) -> Result<u16> {
+    pub fn read_u16(&mut self) -> Result<u16> {
         let slice = self.read_bytes(std::mem::size_of::<u16>())?;
         Ok(u16::from_be_bytes([slice[0], slice[1]]))
     }
 
-    fn read_u32(&mut self) -> Result<u32> {
+    pub fn read_u32(&mut self) -> Result<u32> {
         let slice = self.read_bytes(std::mem::size_of::<u32>())?;
         Ok(u32::from_be_bytes([
             slice[0],
@@ -49,14 +50,14 @@ impl<'a> ClassReader<'a> {
 
 #[cfg(test)]
 mod tests {
-    use crate::class_reader::ReadError;
+    use crate::byte_reader::ReadError;
 
-    use super::ClassReader;
+    use super::ByteReader;
 
     #[test]
     fn test_magic_success() {
         let data = [0xCA, 0xFE, 0xBA, 0xBE];
-        let mut reader = ClassReader::new(&data);
+        let mut reader = ByteReader::new(&data);
         let magic = reader.read_u32().unwrap();
         
         assert_eq!(magic, 0xCAFEBABE);
@@ -65,7 +66,7 @@ mod tests {
     #[test]
     fn test_error_eof() {
         let data = [0xCA];
-        let mut reader = ClassReader::new(&data);
+        let mut reader = ByteReader::new(&data);
         
         assert_eq!(reader.read_u32(), Err(ReadError::UnexpectedEOF));
     }
