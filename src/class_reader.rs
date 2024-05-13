@@ -17,6 +17,16 @@ impl<'a> ClassReader<'a> {
         }
     }
 
+    fn read_u8(&mut self) -> Result<u8, &'static str> {
+        let slice = self.read_bytes(std::mem::size_of::<u8>())?;
+        Ok(u8::from_be_bytes([slice[0]]))
+    }
+
+    fn read_u16(&mut self) -> Result<u16, &'static str> {
+        let slice = self.read_bytes(std::mem::size_of::<u16>())?;
+        Ok(u16::from_be_bytes([slice[0], slice[1]]))
+    }
+
     fn read_u32(&mut self) -> Result<u32, &'static str> {
         let slice = self.read_bytes(std::mem::size_of::<u32>())?;
         Ok(u32::from_be_bytes([
