@@ -1,3 +1,5 @@
+use std::default;
+
 type Result<T> = std::result::Result<T, FileVersionError>;
 
 #[derive(Debug, thiserror::Error, PartialEq)]
@@ -10,7 +12,7 @@ pub enum FileVersionError {
     UnsupportedMinorVersion(u16, u16),
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Default)]
 pub struct ClassFileVersion(MajorVersion, u16);
 
 impl ClassFileVersion {
@@ -28,7 +30,7 @@ impl ClassFileVersion {
 }
 
 #[repr(u16)]
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Default)]
 #[allow(non_camel_case_types)]
 pub enum MajorVersion {
     JavaSE_1_1,
@@ -47,6 +49,7 @@ pub enum MajorVersion {
     JavaSE_14,
     JavaSE_15,
     JavaSE_16,
+    #[default]
     JavaSE_17,
     JavaSE_18,
     JavaSE_19,
