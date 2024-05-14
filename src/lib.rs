@@ -1,2 +1,4 @@
 pub mod byte_reader;
 pub mod class_file_version;
+pub mod class_file_reader;
+pub mod class_file;
