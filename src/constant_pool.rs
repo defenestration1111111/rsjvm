@@ -4,7 +4,7 @@ pub enum Constant {
     Utf8(String),
     Integer(i32),
     Float(f32),
-    Long(i32),
+    Long(i64),
     Double(f64),
     ClassIndex(u16),
     StringIndex(u16),
