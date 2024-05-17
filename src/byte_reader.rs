@@ -1,3 +1,7 @@
+use std::borrow::Cow;
+
+use cesu8::Cesu8DecodingError;
+
 type Result<T> = std::result::Result<T, ReadError>;
 
 #[derive(Debug, thiserror::Error)]
@@ -5,6 +9,9 @@ pub enum ReadError {
     #[error("End of file encountered unexpectedly")]
     #[non_exhaustive]
     UnexpectedEOF,
+    #[error("Error reading utf-8 bytes: {0}")]
+    #[non_exhaustive]
+    Cesu8DecodingError(#[from] Cesu8DecodingError),
 }
 
 #[derive(Debug)]
@@ -46,6 +53,32 @@ impl<'a> ByteReader<'a> {
             slice[3],
         ]))    
     }
+
+    pub fn read_i32(&mut self) -> Result<i32> {
+        let slice = self.read_bytes(std::mem::size_of::<i32>())?;
+        Ok(i32::from_be_bytes([
+            slice[0],
+            slice[1],
+            slice[2],
+            slice[3],
+            ]))
+    }
+
+    pub fn read_f32(&mut self) -> Result<f32> {
+        let slice = self.read_bytes(std::mem::size_of::<f32>())?;
+        Ok(f32::from_be_bytes([
+            slice[0],
+            slice[1],
+            slice[2],
+            slice[3],
+        ]))
+    }
+
+    pub fn read_utf8(&mut self, len: u32) -> Result<Cow<str>> {
+        let modified_utf_bytes = self.read_bytes(len as usize)?;
+        cesu8::from_java_cesu8(&modified_utf_bytes)
+            .map_err(|e| ReadError::Cesu8DecodingError(e))
+    }
 }
 
 #[cfg(test)]
@@ -69,5 +102,26 @@ mod tests {
         let mut reader = ByteReader::new(&data);
         
         assert!(reader.read_u32().is_err());
+    }
+
+    #[test]
+    fn test_integer() {
+        let data = [0x00, 0x14, 0x67, 0x8C];
+        let mut reader = ByteReader::new(&data);
+        assert_eq!(reader.read_i32().unwrap(), 1337228);
+    }
+
+    #[test]
+    fn test_float_inf() {
+        let data = [0x7F, 0x80, 0x00, 0x00];
+        let mut reader = ByteReader::new(&data);
+        assert_eq!(reader.read_f32().unwrap(), f32::INFINITY);
+    }
+
+    #[test]
+    fn test_float_neg_inf() {
+        let data = [0xFF, 0x80, 0x00, 0x00];
+        let mut reader = ByteReader::new(&data);
+        assert_eq!(reader.read_f32().unwrap(), f32::NEG_INFINITY);
     }
 }
