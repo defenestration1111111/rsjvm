@@ -36,42 +36,31 @@ impl<'a> ByteReader<'a> {
 
     pub fn read_u8(&mut self) -> Result<u8> {
         let slice = self.read_bytes(std::mem::size_of::<u8>())?;
-        Ok(u8::from_be_bytes([slice[0]]))
+        Ok(u8::from_be_bytes(slice.try_into().unwrap()))
     }
 
     pub fn read_u16(&mut self) -> Result<u16> {
         let slice = self.read_bytes(std::mem::size_of::<u16>())?;
-        Ok(u16::from_be_bytes([slice[0], slice[1]]))
+        Ok(u16::from_be_bytes(slice.try_into().unwrap()))
     }
 
     pub fn read_u32(&mut self) -> Result<u32> {
         let slice = self.read_bytes(std::mem::size_of::<u32>())?;
-        Ok(u32::from_be_bytes([
-            slice[0],
-            slice[1],
-            slice[2],
-            slice[3],
-        ]))    
+        Ok(u32::from_be_bytes(slice.try_into().unwrap()))
+   
     }
 
     pub fn read_i32(&mut self) -> Result<i32> {
         let slice = self.read_bytes(std::mem::size_of::<i32>())?;
-        Ok(i32::from_be_bytes([
-            slice[0],
-            slice[1],
-            slice[2],
-            slice[3],
-            ]))
+        Ok(i32::from_be_bytes(slice.try_into().unwrap()))
+
+    }
     }
 
     pub fn read_f32(&mut self) -> Result<f32> {
         let slice = self.read_bytes(std::mem::size_of::<f32>())?;
-        Ok(f32::from_be_bytes([
-            slice[0],
-            slice[1],
-            slice[2],
-            slice[3],
-        ]))
+        Ok(f32::from_be_bytes(slice.try_into().unwrap()))
+
     }
 
     pub fn read_utf8(&mut self, len: u32) -> Result<Cow<str>> {
