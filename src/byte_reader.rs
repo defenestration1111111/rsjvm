@@ -55,12 +55,20 @@ impl<'a> ByteReader<'a> {
         Ok(i32::from_be_bytes(slice.try_into().unwrap()))
 
     }
+
+    pub fn read_i64(&mut self) -> Result<i64> {
+        let slice = self.read_bytes(std::mem::size_of::<i64>())?;
+        Ok(i64::from_be_bytes(slice.try_into().unwrap()))
     }
 
     pub fn read_f32(&mut self) -> Result<f32> {
         let slice = self.read_bytes(std::mem::size_of::<f32>())?;
         Ok(f32::from_be_bytes(slice.try_into().unwrap()))
+    }
 
+    pub fn read_f64(&mut self) -> Result<f64> {
+        let slice = self.read_bytes(std::mem::size_of::<f64>())?;
+        Ok(f64::from_be_bytes(slice.try_into().unwrap())) 
     }
 
     pub fn read_utf8(&mut self, len: u32) -> Result<Cow<str>> {

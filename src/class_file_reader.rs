@@ -53,6 +53,8 @@ impl<'a> ClassFileReader<'a> {
                 1 => self.read_string_constant()?,
                 3 => self.read_int_constant()?,
                 4 => self.read_float_constant()?,
+                5 => self.read_long_constant()?,
+                6 => self.read_double_constant()?,
                 _ => panic!("at the disco"),
             }
         }
@@ -75,6 +77,18 @@ impl<'a> ClassFileReader<'a> {
     fn read_float_constant(&mut self) -> Result<()> {
         let float = self.byte_reader.read_f32()?;
         self.class_file.constant_pool.add(Constant::Float(float));
+        Ok(())
+    }
+
+    fn read_long_constant(&mut self) -> Result<()> {
+        let long = self.byte_reader.read_i64()?;
+        self.class_file.constant_pool.add(Constant::Long(long));
+        Ok(())
+    }
+
+    fn read_double_constant(&mut self) -> Result<()> {
+        let double = self.byte_reader.read_f64()?;
+        self.class_file.constant_pool.add(Constant::Double(double));
         Ok(())
     }
 }
