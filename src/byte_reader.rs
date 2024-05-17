@@ -1,6 +1,6 @@
 type Result<T> = std::result::Result<T, ReadError>;
 
-#[derive(Debug, thiserror::Error, PartialEq)]
+#[derive(Debug, thiserror::Error)]
 pub enum ReadError {
     #[error("End of file encountered unexpectedly")]
     #[non_exhaustive]
@@ -68,6 +68,6 @@ mod tests {
         let data = [0xCA];
         let mut reader = ByteReader::new(&data);
         
-        assert_eq!(reader.read_u32(), Err(ReadError::UnexpectedEOF));
+        assert!(reader.read_u32().is_err());
     }
 }

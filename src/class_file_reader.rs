@@ -5,7 +5,7 @@ use crate::class_file_version::{ClassFileVersion, FileVersionError};
 
 type Result<T> = std::result::Result<T, ClassReaderError>;
 
-#[derive(Debug, thiserror::Error, PartialEq)]
+#[derive(Debug, thiserror::Error)]
 enum ClassReaderError {
     #[error("Invalid magic number {0}")]
     #[non_exhaustive]
