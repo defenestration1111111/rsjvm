@@ -12,6 +12,9 @@ enum ClassReaderError {
     #[error("Invalid magic number {0}")]
     #[non_exhaustive]
     InvalidMagicNumber(u32),
+    #[error("Tag not supported: {0}")]
+    #[non_exhaustive]
+    TagNotSupported(u8),
     #[error("Error encountered during reading: {0}")]
     #[non_exhaustive]
     ReadError(#[from] ReadError),
@@ -71,7 +74,7 @@ impl<'a> ClassFileReader<'a> {
                 18 => self.read_invoke_dynamic()?,
                 19 => self.read_module()?,
                 20 => self.read_package()?,
-                _ => panic!("at the disco"),
+                _ => return Err(ClassReaderError::TagNotSupported(tag)),
             }
         }
         Ok(())
