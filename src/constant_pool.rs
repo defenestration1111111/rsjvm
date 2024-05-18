@@ -1,4 +1,3 @@
-
 #[derive(Debug)]
 pub enum Constant {
     Utf8(String),

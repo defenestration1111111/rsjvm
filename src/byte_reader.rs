@@ -22,7 +22,7 @@ pub struct ByteReader<'a> {
 
 impl<'a> ByteReader<'a> {
     pub fn new(data: &'a [u8]) -> Self {
-        ByteReader { buf: data, pos: 0}
+        ByteReader { buf: data, pos: 0 }
     }
 
     fn read_bytes(&mut self, size: usize) -> Result<&'a [u8]> {
@@ -47,13 +47,11 @@ impl<'a> ByteReader<'a> {
     pub fn read_u32(&mut self) -> Result<u32> {
         let slice = self.read_bytes(std::mem::size_of::<u32>())?;
         Ok(u32::from_be_bytes(slice.try_into().unwrap()))
-   
     }
 
     pub fn read_i32(&mut self) -> Result<i32> {
         let slice = self.read_bytes(std::mem::size_of::<i32>())?;
         Ok(i32::from_be_bytes(slice.try_into().unwrap()))
-
     }
 
     pub fn read_i64(&mut self) -> Result<i64> {
@@ -68,13 +66,12 @@ impl<'a> ByteReader<'a> {
 
     pub fn read_f64(&mut self) -> Result<f64> {
         let slice = self.read_bytes(std::mem::size_of::<f64>())?;
-        Ok(f64::from_be_bytes(slice.try_into().unwrap())) 
+        Ok(f64::from_be_bytes(slice.try_into().unwrap()))
     }
 
     pub fn read_utf8(&mut self, len: u32) -> Result<Cow<str>> {
         let modified_utf_bytes = self.read_bytes(len as usize)?;
-        cesu8::from_java_cesu8(&modified_utf_bytes)
-            .map_err(|e| ReadError::Cesu8DecodingError(e))
+        cesu8::from_java_cesu8(&modified_utf_bytes).map_err(|e| ReadError::Cesu8DecodingError(e))
     }
 }
 
@@ -89,7 +86,7 @@ mod tests {
         let data = [0xCA, 0xFE, 0xBA, 0xBE];
         let mut reader = ByteReader::new(&data);
         let magic = reader.read_u32().unwrap();
-        
+
         assert_eq!(magic, 0xCAFEBABE);
     }
 
@@ -97,7 +94,7 @@ mod tests {
     fn test_error_eof() {
         let data = [0xCA];
         let mut reader = ByteReader::new(&data);
-        
+
         assert!(reader.read_u32().is_err());
     }
 

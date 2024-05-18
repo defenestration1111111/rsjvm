@@ -90,13 +90,11 @@ impl TryFrom<u16> for MajorVersion {
             _ => Err(FileVersionError::UnsupportedMajorVersion(value)),
         }
     }
-    
 }
 
 #[cfg(test)]
 mod tests {
     use crate::class_file_version::{ClassFileVersion, FileVersionError, MajorVersion};
-
 
     #[test]
     fn test_major_success() {
@@ -105,7 +103,10 @@ mod tests {
 
     #[test]
     fn test_major_error() {
-        assert_eq!(MajorVersion::try_from(777), Err(FileVersionError::UnsupportedMajorVersion(777)));
+        assert_eq!(
+            MajorVersion::try_from(777),
+            Err(FileVersionError::UnsupportedMajorVersion(777))
+        );
     }
 
     #[test]
@@ -115,6 +116,9 @@ mod tests {
 
     #[test]
     fn test_minor_unsupported_minor_error() {
-        assert_eq!(ClassFileVersion::from(65, 555), Err(FileVersionError::UnsupportedMinorVersion(65, 555)));
+        assert_eq!(
+            ClassFileVersion::from(65, 555),
+            Err(FileVersionError::UnsupportedMinorVersion(65, 555))
+        );
     }
 }
