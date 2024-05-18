@@ -1,3 +1,4 @@
+use crate::access_flag::ClassFileAccessFlags;
 use crate::byte_reader::ByteReader;
 use crate::class_file::ClassFile;
 use crate::byte_reader::ReadError;
@@ -180,6 +181,13 @@ impl<'a> ClassFileReader<'a> {
     fn read_package(&mut self) -> Result<()> {
         let name_index = self.byte_reader.read_u16()?;
         self.class_file.constant_pool.add(Constant::Module(name_index));
+        Ok(())
+    }
+
+    fn read_access_flags(&mut self) -> Result<()> {
+        let mask = self.byte_reader.read_u16()?;
+        let flags = ClassFileAccessFlags::new(mask);
+        self.class_file.flags = flags;
         Ok(())
     }
 }
