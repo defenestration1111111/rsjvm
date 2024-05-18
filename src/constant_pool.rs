@@ -1,4 +1,4 @@
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Constant {
     Utf8(String),
     Integer(i32),
@@ -21,11 +21,15 @@ pub enum Constant {
 
 #[derive(Debug, Default)]
 pub struct ConstantPool {
-    constants: Vec<Constant>,
+    constants: Vec<Option<Constant>>,
 }
 
 impl ConstantPool {
-    pub fn add(&mut self, constant: Constant) {
-        self.constants.push(constant);
+    pub fn add(&mut self, index: u16, constant: Constant) {
+        self.constants[index as usize] = Some(constant);
+    }
+
+    pub fn get(&self, index: usize) -> Option<&Constant> {
+        self.constants.get(index).and_then(|opt| opt.as_ref())
     }
 }

@@ -44,6 +44,10 @@ impl<'a> ByteReader<'a> {
         Ok(u16::from_be_bytes(slice.try_into().unwrap()))
     }
 
+    pub fn read_pair_u16(&mut self) -> Result<(u16, u16)> {
+        Ok((self.read_u16()?, self.read_u16()?))
+    }
+
     pub fn read_u32(&mut self) -> Result<u32> {
         let slice = self.read_bytes(std::mem::size_of::<u32>())?;
         Ok(u32::from_be_bytes(slice.try_into().unwrap()))

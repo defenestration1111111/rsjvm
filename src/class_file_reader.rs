@@ -54,9 +54,9 @@ impl<'a> ClassFileReader<'a> {
 
     pub fn read_constant_pool(&mut self) -> Result<()> {
         let constant_pool_count = self.byte_reader.read_u16()?;
-        for _ in 1..constant_pool_count {
+        for mut index in 1..constant_pool_count {
             let tag = self.byte_reader.read_u8()?;
-            match tag {
+            let constant = match tag {
                 1 => self.read_string_constant()?,
                 3 => self.read_int_constant()?,
                 4 => self.read_float_constant()?,
@@ -75,150 +75,101 @@ impl<'a> ClassFileReader<'a> {
                 19 => self.read_module()?,
                 20 => self.read_package()?,
                 _ => return Err(ClassReaderError::TagNotSupported(tag)),
+            };
+
+            self.class_file.constant_pool.add(index, constant.clone());
+
+            if matches!(constant, Constant::Long(_) | Constant::Double(_)) {
+                index += 1;
             }
         }
         Ok(())
     }
 
-    fn read_string_constant(&mut self) -> Result<()> {
+    fn read_string_constant(&mut self) -> Result<Constant> {
         let length = self.byte_reader.read_u16()?;
-        let utf8 = self.byte_reader.read_utf8(length as u32)?.into_owned();
-        self.class_file.constant_pool.add(Constant::Utf8(utf8));
-        Ok(())
+        Ok(Constant::Utf8(self.byte_reader.read_utf8(length as u32)?.into_owned()))
     }
 
-    fn read_int_constant(&mut self) -> Result<()> {
+    fn read_int_constant(&mut self) -> Result<Constant> {
         let integer = self.byte_reader.read_i32()?;
-        self.class_file
-            .constant_pool
-            .add(Constant::Integer(integer));
-        Ok(())
+        Ok(Constant::Integer(integer))
     }
 
-    fn read_float_constant(&mut self) -> Result<()> {
+    fn read_float_constant(&mut self) -> Result<Constant> {
         let float = self.byte_reader.read_f32()?;
-        self.class_file.constant_pool.add(Constant::Float(float));
-        Ok(())
+        Ok(Constant::Float(float))
     }
 
-    fn read_long_constant(&mut self) -> Result<()> {
+    fn read_long_constant(&mut self) -> Result<Constant> {
         let long = self.byte_reader.read_i64()?;
-        self.class_file.constant_pool.add(Constant::Long(long));
-        Ok(())
+        Ok(Constant::Long(long))
     }
 
-    fn read_double_constant(&mut self) -> Result<()> {
+    fn read_double_constant(&mut self) -> Result<Constant> {
         let double = self.byte_reader.read_f64()?;
-        self.class_file.constant_pool.add(Constant::Double(double));
-        Ok(())
+        Ok(Constant::Double(double))
     }
 
-    fn read_class_index(&mut self) -> Result<()> {
+    fn read_class_index(&mut self) -> Result<Constant> {
         let class_index = self.byte_reader.read_u16()?;
-        self.class_file
-            .constant_pool
-            .add(Constant::ClassIndex(class_index));
-        Ok(())
+        Ok(Constant::ClassIndex(class_index))
     }
 
-    fn read_string_info(&mut self) -> Result<()> {
+    fn read_string_info(&mut self) -> Result<Constant> {
         let string_info = self.byte_reader.read_u16()?;
-        self.class_file
-            .constant_pool
-            .add(Constant::StringIndex(string_info));
-        Ok(())
+        Ok(Constant::StringIndex(string_info))
     }
 
-    fn read_field_ref(&mut self) -> Result<()> {
-        let class_index = self.byte_reader.read_u16()?;
-        let name_and_type_index = self.byte_reader.read_u16()?;
-        self.class_file
-            .constant_pool
-            .add(Constant::FieldRef(class_index, name_and_type_index));
-        Ok(())
+    fn read_field_ref(&mut self) -> Result<Constant> {
+        let pair = self.byte_reader.read_pair_u16()?;
+        Ok(Constant::FieldRef(pair.0, pair.1))
     }
 
-    fn read_method_ref(&mut self) -> Result<()> {
-        let class_index = self.byte_reader.read_u16()?;
-        let name_and_type_index = self.byte_reader.read_u16()?;
-        self.class_file
-            .constant_pool
-            .add(Constant::MethodRef(class_index, name_and_type_index));
-        Ok(())
+    fn read_method_ref(&mut self) -> Result<Constant> {
+        let pair = self.byte_reader.read_pair_u16()?;
+        Ok(Constant::MethodRef(pair.0, pair.1))
     }
 
-    fn read_interface_method_ref(&mut self) -> Result<()> {
-        let class_index = self.byte_reader.read_u16()?;
-        let name_and_type_index = self.byte_reader.read_u16()?;
-        self.class_file
-            .constant_pool
-            .add(Constant::InterfaceMethodRef(
-                class_index,
-                name_and_type_index,
-            ));
-        Ok(())
+    fn read_interface_method_ref(&mut self) -> Result<Constant> {
+        let pair = self.byte_reader.read_pair_u16()?;
+        Ok(Constant::InterfaceMethodRef(pair.0, pair.1))
     }
 
-    fn read_name_and_type(&mut self) -> Result<()> {
-        let name_index = self.byte_reader.read_u16()?;
-        let descriptor_index = self.byte_reader.read_u16()?;
-        self.class_file
-            .constant_pool
-            .add(Constant::NameAndType(name_index, descriptor_index));
-        Ok(())
+    fn read_name_and_type(&mut self) -> Result<Constant> {
+        let pair = self.byte_reader.read_pair_u16()?;
+        Ok(Constant::NameAndType(pair.0, pair.1))
     }
 
-    fn read_method_handle(&mut self) -> Result<()> {
+    fn read_method_handle(&mut self) -> Result<Constant> {
         let reference_kind = self.byte_reader.read_u8()?;
         let reference_index = self.byte_reader.read_u16()?;
-        self.class_file
-            .constant_pool
-            .add(Constant::MethodHandle(reference_kind, reference_index));
-        Ok(())
+        Ok(Constant::MethodHandle(reference_kind, reference_index))
     }
 
-    fn read_method_type(&mut self) -> Result<()> {
+    fn read_method_type(&mut self) -> Result<Constant> {
         let descriptor_index = self.byte_reader.read_u16()?;
-        self.class_file
-            .constant_pool
-            .add(Constant::MethodType(descriptor_index));
-        Ok(())
+        Ok(Constant::MethodType(descriptor_index))
     }
 
-    fn read_dynamic(&mut self) -> Result<()> {
-        let bootstrap_method_attr_index = self.byte_reader.read_u16()?;
-        let name_and_type_index = self.byte_reader.read_u16()?;
-        self.class_file.constant_pool.add(Constant::Dynamic(
-            bootstrap_method_attr_index,
-            name_and_type_index,
-        ));
-        Ok(())
+    fn read_dynamic(&mut self) -> Result<Constant> {
+        let pair = self.byte_reader.read_pair_u16()?;
+        Ok(Constant::Dynamic(pair.0, pair.1))
     }
 
-    fn read_invoke_dynamic(&mut self) -> Result<()> {
-        let bootstrap_method_attr_index = self.byte_reader.read_u16()?;
-        let name_and_type_index = self.byte_reader.read_u16()?;
-        self.class_file.constant_pool.add(Constant::InvokeDynamic(
-            bootstrap_method_attr_index,
-            name_and_type_index,
-        ));
-        Ok(())
+    fn read_invoke_dynamic(&mut self) -> Result<Constant> {
+        let pair = self.byte_reader.read_pair_u16()?;
+        Ok(Constant::InvokeDynamic(pair.0, pair.1))
     }
 
-    fn read_module(&mut self) -> Result<()> {
+    fn read_module(&mut self) -> Result<Constant> {
         let name_index = self.byte_reader.read_u16()?;
-        self.class_file
-            .constant_pool
-            .add(Constant::Module(name_index));
-        Ok(())
+        Ok(Constant::Module(name_index))
     }
 
-    fn read_package(&mut self) -> Result<()> {
+    fn read_package(&mut self) -> Result<Constant> {
         let name_index = self.byte_reader.read_u16()?;
-        self.class_file
-            .constant_pool
-            .add(Constant::Module(name_index));
-        Ok(())
+        Ok(Constant::Package(name_index))
     }
 
     fn read_access_flags(&mut self) -> Result<()> {
