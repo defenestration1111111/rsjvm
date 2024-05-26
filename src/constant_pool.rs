@@ -1,4 +1,14 @@
-#[derive(Debug, Clone)]
+#[derive(Debug, thiserror::Error)]
+pub enum ConstantPoolError {
+    #[error("Index out of bounds at index {0}")]
+    #[non_exhaustive]
+    IndexOutOfBounds(usize),
+    #[error("Accessing unusable constant at index {0}")]
+    #[non_exhaustive]
+    UnsuableConstant(usize),
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub enum Constant {
     Utf8(String),
     Integer(i32),
@@ -17,19 +27,27 @@ pub enum Constant {
     InvokeDynamic(u16, u16),
     Module(u16),
     Package(u16),
+    Unsuable,
 }
 
 #[derive(Debug, Default)]
 pub struct ConstantPool {
-    constants: Vec<Option<Constant>>,
+    constants: Vec<Constant>,
 }
 
 impl ConstantPool {
-    pub fn add(&mut self, index: u16, constant: Constant) {
-        self.constants[index as usize] = Some(constant);
+    pub fn add(&mut self, constant: Constant) {
+        self.constants.push(constant.clone());
+        if matches!(constant, Constant::Long(_) | Constant::Double(_)) {
+            self.constants.push(Constant::Unsuable);
+        }
     }
 
-    pub fn get(&self, index: usize) -> Option<&Constant> {
-        self.constants.get(index).and_then(|opt| opt.as_ref())
+    pub fn get(&self, index: usize) -> Result<&Constant, ConstantPoolError> {
+        match self.constants.get(index) {
+            Some(constant) if matches!(constant, Constant::Unsuable) => Err(ConstantPoolError::UnsuableConstant(index)),
+            Some(constant) => Ok(constant),
+            None => Err(ConstantPoolError::IndexOutOfBounds(index)),
+        }
     }
 }
