@@ -4,6 +4,7 @@ use crate::byte_reader::ReadError;
 use crate::class_file::ClassFile;
 use crate::class_file_version::{ClassFileVersion, FileVersionError};
 use crate::constant_pool::Constant;
+use crate::constant_pool::ConstantPoolError;
 
 type Result<T> = std::result::Result<T, ClassReaderError>;
 
@@ -15,12 +16,18 @@ enum ClassReaderError {
     #[error("Tag not supported: {0}")]
     #[non_exhaustive]
     TagNotSupported(u8),
+    #[error("Unexpected constant")]
+    #[non_exhaustive]
+    UnexpectedConstant,
     #[error("Error encountered during reading: {0}")]
     #[non_exhaustive]
     ReadError(#[from] ReadError),
     #[error("Error during parsing file version: {0}")]
     #[non_exhaustive]
     FileVersionError(#[from] FileVersionError),
+    #[error("Error during parsing constant pool {0}")]
+    #[non_exhaustive]
+    ConstantPoolError(#[from] ConstantPoolError),
 }
 
 #[derive(Debug)]
@@ -77,7 +84,7 @@ impl<'a> ClassFileReader<'a> {
                 _ => return Err(ClassReaderError::TagNotSupported(tag)),
             };
 
-            self.class_file.constant_pool.add(index, constant.clone());
+            self.class_file.constant_pool.add(constant.clone());
 
             if matches!(constant, Constant::Long(_) | Constant::Double(_)) {
                 index += 1;
@@ -178,4 +185,46 @@ impl<'a> ClassFileReader<'a> {
         self.class_file.flags = flags;
         Ok(())
     }
+
+    fn get_utf8(&mut self, name_index: u16) -> Result<String> {
+        match self.class_file.constant_pool.get(name_index as usize)? {
+            Constant::Utf8(utf8_content) => Ok(*utf8_content),
+            _ => Err(ClassReaderError::UnexpectedConstant),
+        }
+    }
+
+    fn get_class_name(&mut self, name_index: u16) -> Result<String> {
+        let constant = self.class_file.constant_pool.get(name_index as usize)?;
+        return match constant {
+            Constant::ClassIndex(class_index) => self.get_utf8(*class_index),
+            _ => Err(ClassReaderError::UnexpectedConstant)
+        }
+    }
+
+    fn read_this_class(&mut self) -> Result<()> {
+        let name_index = self.byte_reader.read_u16()?;
+        self.class_file.this_class = self.get_class_name(name_index)?;
+        Ok(())
+    }
+
+    fn read_super_class(&mut self) -> Result<()> {
+        let name_index = self.byte_reader.read_u16()?;
+        if name_index == 0 {
+            return Ok(())
+        }
+        self.class_file.super_class = Some(self.get_class_name(name_index)?);
+        Ok(())
+    }
+
+    fn read_interfaces(&mut self) -> Result<()> {
+        let interfaces_count = self.byte_reader.read_u16()?;
+        let mut intefaces = Vec::new();
+        for _ in 0..interfaces_count {
+            let name_index = self.byte_reader.read_u16()?;
+            intefaces.push(self.get_class_name(name_index)?);
+        }
+        self.class_file.interfaces = intefaces;
+        Ok(())
+    }
+
 }
