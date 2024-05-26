@@ -188,7 +188,7 @@ impl<'a> ClassFileReader<'a> {
 
     fn get_utf8(&mut self, name_index: u16) -> Result<String> {
         match self.class_file.constant_pool.get(name_index as usize)? {
-            Constant::Utf8(utf8_content) => Ok(*utf8_content),
+            Constant::Utf8(utf8_content) => Ok(utf8_content.clone()),
             _ => Err(ClassReaderError::UnexpectedConstant),
         }
     }
