@@ -1,5 +1,7 @@
 use std::{iter::{from_fn, Peekable}, str::Chars};
 
+use crate::attribute::Attribute;
+
 #[derive(Debug, thiserror::Error)]
 pub enum FieldError {
     #[error("End of characters is not expected")]
@@ -19,10 +21,14 @@ pub struct Field {
     flags: FieldAccessFlags,
     name: String,
     type_descriptor: FieldType,
-    
-
+    attributes: Vec<Attribute>,
 }
 
+impl Field {
+    pub fn new(flags: FieldAccessFlags, name: String, type_descriptor: FieldType, attributes: Vec<Attribute>) -> Self {
+        Field { flags, name, type_descriptor, attributes }
+    }
+}
 #[derive(Debug)]
 pub enum AccessFlag {
     Public,

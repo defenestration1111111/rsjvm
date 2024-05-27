@@ -1,10 +1,16 @@
 use crate::access_flag::ClassFileAccessFlags;
+use crate::attribute::Attribute;
+use crate::attribute::AttributeParsingError;
 use crate::byte_reader::ByteReader;
 use crate::byte_reader::ReadError;
 use crate::class_file::ClassFile;
 use crate::class_file_version::{ClassFileVersion, FileVersionError};
 use crate::constant_pool::Constant;
 use crate::constant_pool::ConstantPoolError;
+use crate::field::Field;
+use crate::field::FieldAccessFlags;
+use crate::field::FieldError;
+use crate::field::FieldType;
 
 type Result<T> = std::result::Result<T, ClassReaderError>;
 
@@ -28,6 +34,12 @@ enum ClassReaderError {
     #[error("Error during parsing constant pool {0}")]
     #[non_exhaustive]
     ConstantPoolError(#[from] ConstantPoolError),
+    #[error("Error while parsing field: {0}")]
+    #[non_exhaustive]
+    FieldError(#[from] FieldError),
+    #[error("Error while parsing attibute: {0}")]
+    #[non_exhaustive]
+    AttributeParsingError(#[from] AttributeParsingError),
 }
 
 #[derive(Debug)]
@@ -227,4 +239,40 @@ impl<'a> ClassFileReader<'a> {
         Ok(())
     }
 
+    fn read_fields(&mut self) -> Result<()> {
+        let fields_count = self.byte_reader.read_u16()?;
+        let mut fields = Vec::with_capacity(fields_count as usize);
+        for _ in 0..fields_count {
+            fields.push(self.read_field()?);
+        }
+        self.class_file.fields = fields;
+        Ok(())
+    }
+
+    fn read_field(&mut self) -> Result<Field> {
+        let (access_flags, name_index) = self.byte_reader.read_pair_u16()?;
+        let flags = FieldAccessFlags::new(access_flags);
+        let name = self.get_utf8(name_index)?;
+
+        let (descriptor_index, attributes_count) = self.byte_reader.read_pair_u16()?;
+        let mut field_descriptor_utf8 = self.get_utf8(descriptor_index)?;
+        let type_descriptor = FieldType::try_from(
+            &mut self.get_utf8(descriptor_index)?
+                .chars()
+                .peekable()
+        )?;
+        let mut attributes = Vec::new();
+        for _ in 0..attributes_count {
+            attributes.push(self.read_attribute()?);
+        }
+        Ok(Field::new(flags, name, type_descriptor, attributes))
+    }
+
+    fn read_attribute(&mut self) -> Result<Attribute> {
+        let name_index = self.byte_reader.read_u16()?;
+        let name = self.get_utf8(name_index)?;
+        let length = self.byte_reader.read_u32()?;
+        let data = self.byte_reader.read_bytes(length as usize)?;
+        Attribute::parse(name.as_str(), data).map_err(ClassReaderError::AttributeParsingError)
+    }
 }

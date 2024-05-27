@@ -25,7 +25,7 @@ impl<'a> ByteReader<'a> {
         ByteReader { buf: data, pos: 0 }
     }
 
-    fn read_bytes(&mut self, size: usize) -> Result<&'a [u8]> {
+    pub fn read_bytes(&mut self, size: usize) -> Result<&'a [u8]> {
         if self.pos + size > self.buf.len() {
             Err(ReadError::UnexpectedEOF)
         } else {
