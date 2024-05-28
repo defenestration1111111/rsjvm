@@ -7,3 +7,5 @@ pub mod class_file_reader;
 pub mod class_file_version;
 pub mod constant_pool;
 pub mod field;
+pub mod attribute;
+pub mod predefined_attributes;

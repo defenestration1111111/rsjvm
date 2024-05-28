@@ -1,16 +1,18 @@
 use crate::access_flag::ClassFileAccessFlags;
 use crate::attribute::Attribute;
-use crate::attribute::AttributeParsingError;
+use crate::attribute::UserDefinedAttribute;
 use crate::byte_reader::ByteReader;
 use crate::byte_reader::ReadError;
 use crate::class_file::ClassFile;
 use crate::class_file_version::{ClassFileVersion, FileVersionError};
 use crate::constant_pool::Constant;
 use crate::constant_pool::ConstantPoolError;
+use crate::field::BaseType;
 use crate::field::Field;
 use crate::field::FieldAccessFlags;
 use crate::field::FieldError;
 use crate::field::FieldType;
+use crate::predefined_attributes::ConstantValue;
 
 type Result<T> = std::result::Result<T, ClassReaderError>;
 
@@ -25,6 +27,12 @@ enum ClassReaderError {
     #[error("Unexpected constant")]
     #[non_exhaustive]
     UnexpectedConstant,
+    #[error("Mismatched constant type for field type")]
+    #[non_exhaustive]
+    MismatchedConstantType(FieldType, u16),
+    #[error("Invalid attribute data size {0}. Expected {1}")]
+    #[non_exhaustive]
+    InvalidAttributeSize(u32, u32),
     #[error("Error encountered during reading: {0}")]
     #[non_exhaustive]
     ReadError(#[from] ReadError),
@@ -37,9 +45,6 @@ enum ClassReaderError {
     #[error("Error while parsing field: {0}")]
     #[non_exhaustive]
     FieldError(#[from] FieldError),
-    #[error("Error while parsing attibute: {0}")]
-    #[non_exhaustive]
-    AttributeParsingError(#[from] AttributeParsingError),
 }
 
 #[derive(Debug)]
@@ -261,18 +266,45 @@ impl<'a> ClassFileReader<'a> {
                 .chars()
                 .peekable()
         )?;
+
         let mut attributes = Vec::new();
         for _ in 0..attributes_count {
-            attributes.push(self.read_attribute()?);
+            let name_index = self.byte_reader.read_u16()?;
+            let name = self.get_utf8(name_index)?;
+            let attr = match name.as_str() {
+                "ConstantValue" => self.read_constant_value_attr(type_descriptor.clone())?,
+                _ => self.read_user_defined_attr(name)?,
+            };
+            attributes.push(attr);
         }
         Ok(Field::new(flags, name, type_descriptor, attributes))
     }
 
-    fn read_attribute(&mut self) -> Result<Attribute> {
-        let name_index = self.byte_reader.read_u16()?;
-        let name = self.get_utf8(name_index)?;
+    fn read_constant_value_attr(&mut self, field_type: FieldType) -> Result<Attribute> {
         let length = self.byte_reader.read_u32()?;
-        let data = self.byte_reader.read_bytes(length as usize)?;
-        Attribute::parse(name.as_str(), data).map_err(ClassReaderError::AttributeParsingError)
+        if length != 2 {
+            return Err(ClassReaderError::InvalidAttributeSize(length, 2))
+        }
+        let constantvalue_index = self.byte_reader.read_u16()?;
+        let constant_value = self.class_file.constant_pool.get(constantvalue_index as usize)?;
+        match (field_type.clone(), constant_value) {
+            (FieldType::Base(BaseType::Int), Constant::Integer(_)) |
+            (FieldType::Base(BaseType::Short), Constant::Integer(_)) |
+            (FieldType::Base(BaseType::Char), Constant::Integer(_)) |
+            (FieldType::Base(BaseType::Byte), Constant::Integer(_)) |
+            (FieldType::Base(BaseType::Boolean), Constant::Integer(_)) => Ok(Attribute::ConstantValue(ConstantValue::new(constant_value.clone()))),
+            (FieldType::Base(BaseType::Float), Constant::Float(_)) => Ok(Attribute::ConstantValue(ConstantValue::new(constant_value.clone()))),
+            (FieldType::Base(BaseType::Long), Constant::Long(_)) => Ok(Attribute::ConstantValue(ConstantValue::new(constant_value.clone()))),
+            (FieldType::Base(BaseType::Double), Constant::Double(_)) => Ok(Attribute::ConstantValue(ConstantValue::new(constant_value.clone()))),
+            (FieldType::Object(ref class_name), Constant::Utf8(_)) if class_name == "java/lang/String" => Ok(Attribute::ConstantValue(ConstantValue::new(constant_value.clone()))),
+            _ => Err(ClassReaderError::MismatchedConstantType(field_type, constantvalue_index)),
+        }
+    }
+
+    fn read_user_defined_attr(&mut self, name: String) -> Result<Attribute> {
+        let length = self.byte_reader.read_u32()?;
+        let info = self.byte_reader.read_bytes(length as usize)?;
+        Ok(Attribute::UserDefined(UserDefinedAttribute::new(name, info)))
     }
 }
+

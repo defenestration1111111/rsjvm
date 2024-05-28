@@ -92,7 +92,7 @@ impl FieldAccessFlags {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum BaseType {
     Byte,
     Char,
@@ -104,7 +104,7 @@ pub enum BaseType {
     Boolean,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum FieldType {
     Base(BaseType),
     Object(String),
