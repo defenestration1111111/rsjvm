@@ -102,10 +102,10 @@ impl MethodAccessFlags {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct ParameterDescriptor(Vec<FieldType>);
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct MethodDescriptor(ParameterDescriptor, ReturnDescriptor);
 
 impl MethodDescriptor {
@@ -137,7 +137,7 @@ impl MethodDescriptor {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum ReturnDescriptor {
     FieldType(FieldType),
     VoidDescriptor,
