@@ -9,3 +9,4 @@ pub mod constant_pool;
 pub mod field;
 pub mod attribute;
 pub mod predefined_attributes;
+pub mod method;
