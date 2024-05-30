@@ -260,9 +260,9 @@ impl<'a> ClassFileReader<'a> {
         let name = self.get_utf8(name_index)?;
 
         let (descriptor_index, attributes_count) = self.byte_reader.read_pair_u16()?;
-        let mut field_descriptor_utf8 = self.get_utf8(descriptor_index)?;
+        let field_descriptor_utf8 = self.get_utf8(descriptor_index)?;
         let type_descriptor = FieldType::try_from(
-            &mut self.get_utf8(descriptor_index)?
+                &mut field_descriptor_utf8
                 .chars()
                 .peekable()
         )?;
