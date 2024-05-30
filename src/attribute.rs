@@ -1,8 +1,9 @@
-use crate::predefined_attributes::ConstantValue;
+use crate::predefined_attributes::{ConstantValue, StackMapTable};
 
 #[derive(Debug)]
 pub enum Attribute {
     ConstantValue(ConstantValue),
+    StackMapTable(StackMapTable),
     UserDefined(UserDefinedAttribute),
 }
 
