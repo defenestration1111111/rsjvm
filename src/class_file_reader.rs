@@ -12,7 +12,13 @@ use crate::field::Field;
 use crate::field::FieldAccessFlags;
 use crate::field::FieldError;
 use crate::field::FieldType;
+use crate::method::Method;
+use crate::method::MethodDescriptor;
+use crate::method::MethodParsingError;
 use crate::predefined_attributes::ConstantValue;
+use crate::predefined_attributes::StackMapFrame;
+use crate::predefined_attributes::StackMapTable;
+use crate::predefined_attributes::VerificationTypeInfo;
 
 type Result<T> = std::result::Result<T, ClassReaderError>;
 
@@ -33,6 +39,12 @@ enum ClassReaderError {
     #[error("Invalid attribute data size {0}. Expected {1}")]
     #[non_exhaustive]
     InvalidAttributeSize(u32, u32),
+    #[error("Invalid verification type {0}")]
+    #[non_exhaustive]
+    InvalidVerificationType(u8),
+    #[error("Frame type {0} is not supported")]
+    #[non_exhaustive]
+    InvalidStackMapFrameType(u8),
     #[error("Error encountered during reading: {0}")]
     #[non_exhaustive]
     ReadError(#[from] ReadError),
@@ -299,6 +311,89 @@ impl<'a> ClassFileReader<'a> {
             (FieldType::Object(ref class_name), Constant::Utf8(_)) if class_name == "java/lang/String" => Ok(Attribute::ConstantValue(ConstantValue::new(constant_value.clone()))),
             _ => Err(ClassReaderError::MismatchedConstantType(field_type, constantvalue_index)),
         }
+    }
+
+    fn read_stack_map_table_attr(&mut self) -> Result<Attribute> {
+        let length = self.byte_reader.read_u32()?;
+        let number_of_entries = self.byte_reader.read_u16()?;
+        let mut frames = Vec::with_capacity(number_of_entries as usize);
+        for _ in 0..number_of_entries {
+            let frame = self.read_stack_map_frame()?;
+            frames.push(frame);
+        }
+
+        Ok(Attribute::StackMapTable(StackMapTable::new(frames)))
+    }
+
+    fn read_stack_map_frame(&mut self) -> Result<StackMapFrame> {
+        let frame_type = self.byte_reader.read_u8()?;
+        match frame_type {
+            0..=63 => Ok(StackMapFrame::SameFrame { frame_type }),
+            64..=127 => {
+                let stack = self.read_verification_type()?;
+                Ok(StackMapFrame::SameLocals1StackItemFrame { frame_type, stack })
+            }
+            247 => {
+                let offset_delta = self.byte_reader.read_u16()?;
+                let stack = self.read_verification_type()?;
+                Ok(StackMapFrame::SameLocals1StackItemFrameExtended { frame_type, offset_delta, stack })
+            }
+            248..=250 => {
+                let offset_delta = self.byte_reader.read_u16()?;
+                Ok(StackMapFrame::ChopFrame { frame_type, offset_delta })
+            }
+            251 => {
+                let offset_delta = self.byte_reader.read_u16()?;
+                Ok(StackMapFrame::SameFrameExtended { frame_type, offset_delta })
+            }
+            252..=254 => {
+                let offset_delta = self.byte_reader.read_u16()?;
+                let locals_count = frame_type - 251;
+                let locals = self.read_verification_types(locals_count as u16)?;
+                Ok(StackMapFrame::AppendFrame { frame_type, offset_delta, locals })
+            }
+            255 => {
+                let offset_delta = self.byte_reader.read_u16()?;
+                let locals_count = self.byte_reader.read_u16()?;
+                let locals = self.read_verification_types(locals_count)?;
+                let stack_count = self.byte_reader.read_u16()?;
+                let stack = self.read_verification_types(stack_count)?;
+                Ok(StackMapFrame::FullFrame { frame_type, offset_delta, locals, stack })
+            }
+            _ => return Err(ClassReaderError::InvalidStackMapFrameType(frame_type))
+        }
+    }
+
+    fn read_verification_type(&mut self) -> Result<VerificationTypeInfo> {
+        let tag = self.byte_reader.read_u8()?;
+        Ok(match tag {
+            0 => VerificationTypeInfo::Top,
+            1 => VerificationTypeInfo::Integer,
+            2 => VerificationTypeInfo::Float,
+            3 => VerificationTypeInfo::Double,
+            4 => VerificationTypeInfo::Long,
+            5 => VerificationTypeInfo::Null,
+            6 => VerificationTypeInfo::UninitializedThis,
+            7 => {
+                let cpool_index = self.byte_reader.read_u16()?;
+                let constant = self.class_file.constant_pool.get(cpool_index as usize)?;
+                VerificationTypeInfo::Object { constant: constant.clone() }
+            }
+            8 => {
+                let offset = self.byte_reader.read_u16()?;
+                VerificationTypeInfo::Uninitialized { offset }
+            }
+            _ => return Err(ClassReaderError::InvalidVerificationType(tag))
+        })
+    }
+
+    fn read_verification_types(&mut self, count: u16) -> Result<Vec<VerificationTypeInfo>> {
+        let mut types = Vec::with_capacity(count as usize);
+        for _ in 0..count {
+            let verification_type = self.read_verification_type()?;
+            types.push(verification_type);
+        }
+        Ok(types)
     }
 
     fn read_user_defined_attr(&mut self, name: String) -> Result<Attribute> {
