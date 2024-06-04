@@ -10,3 +10,4 @@ pub mod field;
 pub mod attribute;
 pub mod predefined_attributes;
 pub mod method;
+pub mod instruction;
