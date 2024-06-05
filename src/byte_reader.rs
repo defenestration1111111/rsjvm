@@ -18,11 +18,12 @@ pub enum ReadError {
 pub struct ByteReader<'a> {
     buf: &'a [u8],
     pos: usize,
+    prev_pos: usize,
 }
 
 impl<'a> ByteReader<'a> {
     pub fn new(data: &'a [u8]) -> Self {
-        ByteReader { buf: data, pos: 0 }
+        ByteReader { buf: data, pos: 0, prev_pos: 0 }
     }
 
     pub fn read_bytes(&mut self, size: usize) -> Result<&'a [u8]> {
@@ -30,6 +31,7 @@ impl<'a> ByteReader<'a> {
             Err(ReadError::UnexpectedEOF)
         } else {
             let bytes = &self.buf[self.pos..self.pos + size];
+            self.prev_pos = self.pos;
             self.pos += size;
             Ok(bytes)
         }
@@ -78,6 +80,12 @@ impl<'a> ByteReader<'a> {
         let modified_utf_bytes = self.read_bytes(len as usize)?;
         cesu8::from_java_cesu8(&modified_utf_bytes).map_err(|e| ReadError::Cesu8DecodingError(e))
     }
+
+    pub fn snippet(&mut self) -> Vec<u8> {
+        let start = if self.prev_pos > 1 { self.prev_pos - 2} else { 0 };
+        let end = if self.pos + 2 <= self.buf.len() { self.pos + 1} else {self.buf.len() - 1};
+        self.buf[start..=end].to_vec()
+    }
 }
 
 #[cfg(test)]
@@ -122,5 +130,14 @@ mod tests {
         let data = [0xFF, 0x80, 0x00, 0x00];
         let mut reader = ByteReader::new(&data);
         assert_eq!(reader.read_f32().unwrap(), f32::NEG_INFINITY);
+    }
+
+    #[test]
+    fn test_snippet_success() {
+        let data = [0x00].repeat(6);
+        let mut reader = ByteReader::new(&data);
+        reader.read_u16();
+        reader.read_u16();
+        assert_eq!(reader.snippet().len(), 6);
     }
 }
