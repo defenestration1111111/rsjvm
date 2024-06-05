@@ -30,6 +30,7 @@ impl<'a> ByteReader<'a> {
             Err(ReadError::UnexpectedEOF)
         } else {
             let bytes = &self.buf[self.pos..self.pos + size];
+            self.pos += size;
             Ok(bytes)
         }
     }
