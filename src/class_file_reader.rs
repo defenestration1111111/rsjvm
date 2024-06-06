@@ -23,7 +23,7 @@ use crate::predefined_attributes::VerificationTypeInfo;
 type Result<T> = std::result::Result<T, ClassReaderError>;
 
 #[derive(Debug, thiserror::Error)]
-enum ClassReaderError {
+pub enum ClassReaderError {
     #[error("Invalid magic number {0}")]
     #[non_exhaustive]
     InvalidMagicNumber(u32),
@@ -60,17 +60,58 @@ enum ClassReaderError {
 }
 
 #[derive(Debug)]
-struct ClassFileReader<'a> {
+pub struct ContextualError {
+    err: ClassReaderError,
+    snippet: Vec<u8>,
+}
+
+impl ContextualError {
+    fn new(err: ClassReaderError, snippet: Vec<u8>) -> Self {
+        ContextualError { err, snippet }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct ClassFileReader<'a> {
     byte_reader: ByteReader<'a>,
     class_file: ClassFile,
 }
 
 impl<'a> ClassFileReader<'a> {
-    pub fn new(data: &'a [u8]) -> Self {
+    fn new(data: &'a [u8]) -> Self {
         ClassFileReader {
             byte_reader: ByteReader::new(data),
             class_file: ClassFile::default(),
         }
+    }
+
+    pub fn read_class(data: &[u8]) -> std::result::Result<ClassFile, ContextualError> {
+        let mut class_reader = ClassFileReader::new(data);
+        match class_reader.clone().read() {
+            Ok(class_file) => Ok(class_file),
+            Err(err) => {
+                let snippet = class_reader.snippet();
+                Err(ContextualError::new(err, snippet))
+            }
+        }
+    }
+
+    fn snippet (&self) -> Vec<u8>{
+        self.byte_reader.snippet()
+    }
+
+    fn read(mut self) -> Result<ClassFile> {
+        self.read_magic_number()?;
+        self.read_version()?;
+        self.read_constant_pool()?;
+        self.read_access_flags()?;
+        self.read_this_class()?;
+        self.read_super_class()?;
+        self.read_interfaces()?;
+        self.read_fields()?;
+        // self.read_methods()?;
+        // self.read_class_attributes()?;
+        Ok(self.class_file.clone())
     }
 
     pub fn read_magic_number(&mut self) -> Result<()> {
