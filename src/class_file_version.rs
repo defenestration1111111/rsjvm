@@ -1,4 +1,4 @@
-use std::default;
+use std::{default, fmt::Display};
 
 type Result<T> = std::result::Result<T, FileVersionError>;
 
@@ -12,7 +12,7 @@ pub enum FileVersionError {
     UnsupportedMinorVersion(u16, u16),
 }
 
-#[derive(Debug, PartialEq, Eq, Default)]
+#[derive(Debug, PartialEq, Eq, Default, Clone, Copy)]
 pub struct ClassFileVersion(MajorVersion, u16);
 
 impl ClassFileVersion {
@@ -30,7 +30,7 @@ impl ClassFileVersion {
 }
 
 #[repr(u16)]
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Default)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Default, strum_macros::Display)]
 #[allow(non_camel_case_types)]
 pub enum MajorVersion {
     JavaSE_1_1,
@@ -89,6 +89,12 @@ impl TryFrom<u16> for MajorVersion {
             66 => Ok(JavaSE_22),
             _ => Err(FileVersionError::UnsupportedMajorVersion(value)),
         }
+    }
+}
+
+impl Display for ClassFileVersion {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Major version: {}, minor version: {}", self.0, self.1)
     }
 }
 

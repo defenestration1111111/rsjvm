@@ -1,6 +1,6 @@
-use crate::constant_pool::Constant;
+use crate::{attribute::Attribute, constant_pool::Constant};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ConstantValue {
     value: Constant,
 }
@@ -11,7 +11,24 @@ impl ConstantValue {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
+pub struct Code {
+    max_stack: u16,
+    max_locals: u16,
+    code: Vec<u8>,
+    exception_table: Vec<ExceptionTableEntry>,
+    attributes: Vec<Attribute>,
+}
+
+#[derive(Debug, Clone)]
+pub struct ExceptionTableEntry {
+    start_pc: u16,
+    end_pc: u16,
+    handler_pc: u16,
+    catch_type: u16,
+}
+
+#[derive(Debug, Clone)]
 pub struct StackMapTable {
     frames: Vec<StackMapFrame>,
 }
@@ -22,7 +39,7 @@ impl StackMapTable {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum StackMapFrame {
     SameFrame {
         frame_type: u8, /* 0-63 */
@@ -57,7 +74,7 @@ pub enum StackMapFrame {
     },
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum VerificationTypeInfo {
     Top,
     Integer,

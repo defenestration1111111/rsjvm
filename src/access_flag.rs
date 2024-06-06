@@ -1,4 +1,4 @@
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 enum AccessFlag {
     Public,
     Final,
@@ -11,7 +11,7 @@ enum AccessFlag {
     Module,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct ClassFileAccessFlags {
     flags: Vec<AccessFlag>,
 }

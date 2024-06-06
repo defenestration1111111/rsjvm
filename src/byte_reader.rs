@@ -14,7 +14,7 @@ pub enum ReadError {
     Cesu8DecodingError(#[from] Cesu8DecodingError),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct ByteReader<'a> {
     buf: &'a [u8],
     pos: usize,
@@ -81,7 +81,7 @@ impl<'a> ByteReader<'a> {
         cesu8::from_java_cesu8(&modified_utf_bytes).map_err(|e| ReadError::Cesu8DecodingError(e))
     }
 
-    pub fn snippet(&mut self) -> Vec<u8> {
+    pub fn snippet(self) -> Vec<u8> {
         let start = if self.prev_pos > 1 { self.prev_pos - 2} else { 0 };
         let end = if self.pos + 2 <= self.buf.len() { self.pos + 1} else {self.buf.len() - 1};
         self.buf[start..=end].to_vec()

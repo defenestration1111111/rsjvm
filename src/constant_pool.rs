@@ -30,7 +30,7 @@ pub enum Constant {
     Unsuable,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct ConstantPool {
     constants: Vec<Constant>,
 }

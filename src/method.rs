@@ -17,7 +17,7 @@ pub enum MethodParsingError {
     FieldError(#[from] FieldError),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Method {
     flags: MethodAccessFlags,
     name: String,
@@ -25,7 +25,7 @@ pub struct Method {
     attributes: Vec<Attribute>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum MethodFlag {
     Public,
     Private,
@@ -41,7 +41,7 @@ pub enum MethodFlag {
     Synthetic,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct MethodAccessFlags {
     flags: Vec<MethodFlag>,
 }

@@ -1,13 +1,13 @@
 use crate::predefined_attributes::{ConstantValue, StackMapTable};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Attribute {
     ConstantValue(ConstantValue),
     StackMapTable(StackMapTable),
     UserDefined(UserDefinedAttribute),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct UserDefinedAttribute {
     name: String,
     info: Vec<u8>,

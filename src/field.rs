@@ -16,7 +16,7 @@ pub enum FieldError {
 }
 
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Field {
     flags: FieldAccessFlags,
     name: String,
@@ -29,7 +29,7 @@ impl Field {
         Field { flags, name, type_descriptor, attributes }
     }
 }
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum AccessFlag {
     Public,
     Private,
@@ -42,7 +42,7 @@ pub enum AccessFlag {
     Enum,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct FieldAccessFlags {
     flags: Vec<AccessFlag>,
 }
