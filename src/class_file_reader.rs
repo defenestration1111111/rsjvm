@@ -1,3 +1,5 @@
+use std::fmt;
+
 use crate::access_flag::ClassFileAccessFlags;
 use crate::attribute::Attribute;
 use crate::attribute::UserDefinedAttribute;
@@ -30,9 +32,12 @@ pub enum ClassReaderError {
     #[error("Tag not supported: {0}")]
     #[non_exhaustive]
     TagNotSupported(u8),
-    #[error("Unexpected constant")]
+    #[error("Unexpected constant: expected {expected:?}, found {actual:?}")]
     #[non_exhaustive]
-    UnexpectedConstant,
+    UnexpectedConstant {
+        expected: String,
+        actual: String
+    },
     #[error("Mismatched constant type for field type")]
     #[non_exhaustive]
     MismatchedConstantType(FieldType, u16),
@@ -59,7 +64,6 @@ pub enum ClassReaderError {
     FieldError(#[from] FieldError),
 }
 
-#[derive(Debug)]
 pub struct ContextualError {
     err: ClassReaderError,
     snippet: Vec<u8>,
@@ -68,6 +72,19 @@ pub struct ContextualError {
 impl ContextualError {
     fn new(err: ClassReaderError, snippet: Vec<u8>) -> Self {
         ContextualError { err, snippet }
+    }
+}
+
+impl fmt::Debug for ContextualError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "ContextualError {{ err: {:?}, snippet: [", self.err)?;
+        for (i, byte) in self.snippet.iter().enumerate() {
+            if i != 0 {
+                write!(f, ", ")?;
+            }
+            write!(f, "0x{:02X}", byte)?;
+        }
+        write!(f, "] }}")
     }
 }
 
@@ -87,7 +104,8 @@ impl<'a> ClassFileReader<'a> {
 
     pub fn read_class(data: &[u8]) -> std::result::Result<ClassFile, ContextualError> {
         let mut class_reader = ClassFileReader::new(data);
-        match class_reader.clone().read() {
+        let result = class_reader.read();
+        match result {
             Ok(class_file) => Ok(class_file),
             Err(err) => {
                 let snippet = class_reader.snippet();
@@ -96,11 +114,11 @@ impl<'a> ClassFileReader<'a> {
         }
     }
 
-    fn snippet (&self) -> Vec<u8>{
+    fn snippet(&self) -> Vec<u8> {
         self.byte_reader.snippet()
     }
 
-    fn read(mut self) -> Result<ClassFile> {
+    fn read(&mut self) -> Result<ClassFile> {
         self.read_magic_number()?;
         self.read_version()?;
         self.read_constant_pool()?;
@@ -257,17 +275,18 @@ impl<'a> ClassFileReader<'a> {
     }
 
     fn get_utf8(&mut self, name_index: u16) -> Result<String> {
-        match self.class_file.constant_pool.get(name_index as usize)? {
+        let constant = self.class_file.constant_pool.get(name_index as usize)?;
+        match constant {
             Constant::Utf8(utf8_content) => Ok(utf8_content.clone()),
-            _ => Err(ClassReaderError::UnexpectedConstant),
+            _ => Err(ClassReaderError::UnexpectedConstant { expected: "Utf8".to_string(), actual: constant.name() }),
         }
     }
 
     fn get_class_name(&mut self, name_index: u16) -> Result<String> {
         let constant = self.class_file.constant_pool.get(name_index as usize)?;
-        return match constant {
+        match constant {
             Constant::ClassIndex(class_index) => self.get_utf8(*class_index),
-            _ => Err(ClassReaderError::UnexpectedConstant)
+            _ => Err(ClassReaderError::UnexpectedConstant { expected: "ClassIndex".to_string(), actual: constant.name() })
         }
     }
 
