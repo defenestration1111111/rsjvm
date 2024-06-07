@@ -1,3 +1,5 @@
+use name_variant::NamedVariant;
+
 #[derive(Debug, thiserror::Error)]
 pub enum ConstantPoolError {
     #[error("Index out of bounds at index {0}")]
@@ -8,7 +10,7 @@ pub enum ConstantPoolError {
     UnsuableConstant(usize),
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, NamedVariant)]
 pub enum Constant {
     Utf8(String),
     Integer(i32),
@@ -28,6 +30,12 @@ pub enum Constant {
     Module(u16),
     Package(u16),
     Unsuable,
+}
+
+impl Constant {
+    pub fn name(self) -> String {
+        self.variant_name().to_string()
+    }
 }
 
 #[derive(Debug, Default, Clone)]
