@@ -59,6 +59,7 @@ pub enum Instruction {
     F2d,
     F2i,
     F2l,
+    Fadd,
     Faload,
     Fastore,
     Fcmpg,
