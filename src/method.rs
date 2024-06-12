@@ -19,10 +19,10 @@ pub enum MethodParsingError {
 
 #[derive(Debug, Clone)]
 pub struct Method {
-    flags: MethodAccessFlags,
-    name: String,
-    type_descriptor: MethodDescriptor,
-    attributes: Vec<Attribute>,
+    pub flags: MethodAccessFlags,
+    pub name: String,
+    pub type_descriptor: MethodDescriptor,
+    pub attributes: Vec<Attribute>,
 }
 
 #[derive(Debug, Clone)]

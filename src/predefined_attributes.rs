@@ -1,4 +1,4 @@
-use crate::{attribute::Attribute, constant_pool::Constant};
+use crate::{attribute::Attribute, constant_pool::Constant, instruction::Instruction};
 
 #[derive(Debug, Clone)]
 pub struct ConstantValue {
@@ -13,11 +13,11 @@ impl ConstantValue {
 
 #[derive(Debug, Clone)]
 pub struct Code {
-    max_stack: u16,
-    max_locals: u16,
-    code: Vec<u8>,
-    exception_table: Vec<ExceptionTableEntry>,
-    attributes: Vec<Attribute>,
+    pub max_stack: u16,
+    pub max_locals: u16,
+    pub code: Vec<(Instruction, u32)>,
+    pub exception_table: Vec<ExceptionTableEntry>,
+    pub attributes: Vec<Attribute>,
 }
 
 #[derive(Debug, Clone)]

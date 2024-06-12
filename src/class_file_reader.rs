@@ -14,9 +14,12 @@ use crate::field::Field;
 use crate::field::FieldAccessFlags;
 use crate::field::FieldError;
 use crate::field::FieldType;
+use crate::instruction::Instruction;
 use crate::method::Method;
+use crate::method::MethodAccessFlags;
 use crate::method::MethodDescriptor;
 use crate::method::MethodParsingError;
+use crate::predefined_attributes::Code;
 use crate::predefined_attributes::ConstantValue;
 use crate::predefined_attributes::StackMapFrame;
 use crate::predefined_attributes::StackMapTable;
@@ -62,6 +65,9 @@ pub enum ClassReaderError {
     #[error("Error while parsing field: {0}")]
     #[non_exhaustive]
     FieldError(#[from] FieldError),
+    #[error("Error while parsing method: {0}")]
+    #[non_exhaustive]
+    MethodParsingError(#[from] MethodParsingError),
 }
 
 pub struct ContextualError {
@@ -127,7 +133,7 @@ impl<'a> ClassFileReader<'a> {
         self.read_super_class()?;
         self.read_interfaces()?;
         self.read_fields()?;
-        // self.read_methods()?;
+        self.read_methods()?;
         // self.read_class_attributes()?;
         Ok(self.class_file.clone())
     }
@@ -352,6 +358,41 @@ impl<'a> ClassFileReader<'a> {
         Ok(Field::new(flags, name, type_descriptor, attributes))
     }
 
+    fn read_methods(&mut self) -> Result<()> {
+        let methods_count = self.byte_reader.read_u16()?;
+        let mut methods = Vec::with_capacity(methods_count as usize);
+        for _ in 0..methods_count {
+            methods.push(self.read_method()?);
+        }
+        self.class_file.methods = methods;
+        Ok(())
+    }
+
+    fn read_method(&mut self) -> Result<Method> {
+        let (access_flag, name_index) = self.byte_reader.read_pair_u16()?;
+        let flags = MethodAccessFlags::new(access_flag);
+        let name = self.get_utf8(name_index)?;
+
+        let (descriptor_index, attributes_count) = self.byte_reader.read_pair_u16()?;
+        let type_descriptor = MethodDescriptor::try_from(
+            &mut self.get_utf8(descriptor_index)?
+                .chars()
+                .peekable() 
+        )?;
+
+        let mut attributes = Vec::with_capacity(attributes_count as usize);
+        for _ in 0..attributes_count {
+            let name_index = self.byte_reader.read_u16()?;
+            let name = self.get_utf8(name_index)?;
+            let attr = match name.as_str() {
+                "Code" => self.read_code_attr()?,
+                _ => self.read_user_defined_attr(name)?,
+            };
+            attributes.push(attr);
+        }
+        Ok(Method { flags, name, type_descriptor, attributes })
+    }
+
     fn read_constant_value_attr(&mut self, field_type: FieldType) -> Result<Attribute> {
         let length = self.byte_reader.read_u32()?;
         if length != 2 {
@@ -371,6 +412,256 @@ impl<'a> ClassFileReader<'a> {
             (FieldType::Object(ref class_name), Constant::Utf8(_)) if class_name == "java/lang/String" => Ok(Attribute::ConstantValue(ConstantValue::new(constant_value.clone()))),
             _ => Err(ClassReaderError::MismatchedConstantType(field_type, constantvalue_index)),
         }
+    }
+
+    fn read_code_attr(&mut self) -> Result<Attribute> {
+        let length = self.byte_reader.read_u32()?;
+        let max_stack = self.byte_reader.read_u16()?;
+        let max_locals = self.byte_reader.read_u16()?;
+        let code_length = self.byte_reader.read_u32()?;
+
+        let mut instructions = Vec::new();
+        let mut bytes_read = 0;
+
+        while bytes_read < code_length {
+            let index = self.byte_reader.read_u8()?;
+            instructions.push(self.read_instruction(index, &mut bytes_read)?);
+        }
+        Ok(Attribute::Code(Code { max_stack, max_locals, code: instructions, exception_table: Vec::new(), attributes: Vec::new() }))
+    }
+
+    fn read_instruction(&mut self, index: u8, address: &mut u32) -> Result<(Instruction, u32)> {
+        let current_address: u32 = *address;
+        *address += 1;
+
+        let instruction = match index {
+            0x32 => Instruction::Aaload,
+            0x53 => Instruction::Aastore,
+            0x01 => Instruction::Aconst_null,
+            0x19 => Instruction::Aload(self.read_instruction_u8(address)?),
+            0x2a => Instruction::Aload_0,
+            0x2b => Instruction::Aload_1,
+            0x2c => Instruction::Aload_2,
+            0x2d => Instruction::Aload_3,
+            0xbd => Instruction::Anewarray(self.read_instruction_u16(address)?),
+            0xb0 => Instruction::Areturn,
+            0xbe => Instruction::Arraylength,
+            0x3a => Instruction::Astore(self.read_instruction_u8(address)?),
+            0x4b => Instruction::Astore_0,
+            0x4c => Instruction::Astore_1,
+            0x4d => Instruction::Astore_2,
+            0x4e => Instruction::Astore_3,
+            0xbf => Instruction::Athrow,
+            0x33 => Instruction::Baload,
+            0x54 => Instruction::Bastore,
+            0x10 => Instruction::Bipush(self.read_instruction_u8(address)?),
+            0x34 => Instruction::Caload,
+            0x55 => Instruction::Castore,
+            0xc0 => Instruction::Checkcast(self.read_instruction_u16(address)?),
+            0x90 => Instruction::D2f,
+            0x8e => Instruction::D2i,
+            0x8f => Instruction::D2l,
+            0x63 => Instruction::Dadd,
+            0x31 => Instruction::Daload,
+            0x52 => Instruction::Dastore,
+            0x98 => Instruction::Dcmpg,
+            0x97 => Instruction::Dcmpl,
+            0x0e => Instruction::Dconst_0,
+            0x0f => Instruction::Dconst_1,
+            0x6f => Instruction::Ddiv,
+            0x18 => Instruction::Dload(self.read_instruction_u8(address)?),
+            0x26 => Instruction::Dload_0,
+            0x27 => Instruction::Dload_1,
+            0x28 => Instruction::Dload_2,
+            0x29 => Instruction::Dload_3,
+            0x6b => Instruction::Dmul,
+            0x77 => Instruction::Dneg,
+            0x73 => Instruction::Drem,
+            0xaf => Instruction::Dreturn,
+            0x39 => Instruction::Dstore(self.read_instruction_u8(address)?),
+            0x47 => Instruction::Dstore_0,
+            0x48 => Instruction::Dstore_1,
+            0x49 => Instruction::Dstore_2,
+            0x4a => Instruction::Dstore_3,
+            0x67 => Instruction::Dsub,
+            0x59 => Instruction::Dup,
+            0x5a => Instruction::Dup_x1,
+            0x5b => Instruction::Dup_x2,
+            0x5c => Instruction::Dup_2,
+            0x5d => Instruction::Dup2_x1,
+            0x5e => Instruction::Dup2_x2,
+            0x8d => Instruction::F2d,
+            0x8b => Instruction::F2i,
+            0x8c => Instruction::F2l,
+            0x62 => Instruction::Fadd,
+            0x30 => Instruction::Faload,
+            0x51 => Instruction::Fastore,
+            0x96 => Instruction::Fcmpg,
+            0x95 => Instruction::Fcmpl,
+            0x0b => Instruction::Fconst_0,
+            0x0c => Instruction::Fconst_1,
+            0x0d => Instruction::Fconst_2,
+            0x6e => Instruction::Fdiv,
+            0x17 => Instruction::Fload(self.read_instruction_u8(address)?),
+            0x22 => Instruction::Fload_0,
+            0x23 => Instruction::Fload_1,
+            0x24 => Instruction::Fload_2,
+            0x25 => Instruction::Fload_3,
+            0x6a => Instruction::Fmul,
+            0x76 => Instruction::Fneg,
+            0x72 => Instruction::Frem,
+            0xae => Instruction::Freturn,
+            0x38 => Instruction::Fstore(self.read_instruction_u8(address)?),
+            0x43 => Instruction::Fstore_0,
+            0x44 => Instruction::Fstore_1,
+            0x45 => Instruction::Fstore_2,
+            0x46 => Instruction::Fstore_3,
+            0x66 => Instruction::Fsub,
+            0xb4 => Instruction::Getfield(self.read_instruction_u16(address)?),
+            0xb2 => Instruction::Getstatic(self.read_instruction_u16(address)?),
+            0xa7 => todo!("Goto"),
+            0xc8 => todo!("Goto_w"),
+            0x91 => Instruction::I2b,
+            0x92 => Instruction::I2c,
+            0x87 => Instruction::I2d,
+            0x86 => Instruction::I2f,
+            0x85 => Instruction::I2l,
+            0x93 => Instruction::I2s,
+            0x60 => Instruction::Iadd,
+            0x2e => Instruction::Iaload,
+            0x7e => Instruction::Iand,
+            0x4f => Instruction::Iastore,
+            0x02 => Instruction::Iconst_m1,
+            0x03 => Instruction::Iconst_0,
+            0x04 => Instruction::Iconst_1,
+            0x05 => Instruction::Iconst_2,
+            0x06 => Instruction::Iconst_3,
+            0x07 => Instruction::Iconst_4,
+            0x08 => Instruction::Iconst_5,
+            0x6c => Instruction::Idiv,
+            0xa5 => Instruction::If_acmpeq(self.byte_reader.read_u16()?),
+            0xa6 => Instruction::If_acmpne(self.byte_reader.read_u16()?),
+            0x9f => Instruction::If_icmpeq(self.byte_reader.read_u16()?),
+            0xa0 => Instruction::If_icmpne(self.byte_reader.read_u16()?),
+            0xa1 => Instruction::If_icmplt(self.byte_reader.read_u16()?),
+            0xa2 => Instruction::If_icmpge(self.byte_reader.read_u16()?),
+            0xa3 => Instruction::If_icmpgt(self.byte_reader.read_u16()?),
+            0xa4 => Instruction::If_icmple(self.byte_reader.read_u16()?),
+            0x99 => Instruction::Ifeq(self.byte_reader.read_u16()?),
+            0x9a => Instruction::Ifne(self.byte_reader.read_u16()?),
+            0x9b => Instruction::Iflt(self.byte_reader.read_u16()?),
+            0x9c => Instruction::Ifge(self.byte_reader.read_u16()?),
+            0x9d => Instruction::Ifgt(self.byte_reader.read_u16()?),
+            0x9e => Instruction::Ifle(self.byte_reader.read_u16()?),
+            0xc7 => Instruction::Ifnonnull(self.byte_reader.read_u16()?),
+            0xc6 => Instruction::Ifnull(self.byte_reader.read_u16()?),
+            0x84 => Instruction::Iinc(self.read_instruction_u8(address)?, self.read_instruction_i8(address)?),
+            0x15 => Instruction::Iload(self.read_instruction_u8(address)?),
+            0x1a => Instruction::Iload_0,
+            0x1b => Instruction::Iload_1,
+            0x1c => Instruction::Iload_2,
+            0x1d => Instruction::Iload_3,
+            0x68 => Instruction::Imul,
+            0x74 => Instruction::Ineg,
+            0xc1 => Instruction::Instanceof(self.read_instruction_u16(address)?),
+            0xba => Instruction::Invokedynamic(self.read_instruction_u16(address)?),
+            0xb7 => Instruction::Invokespecial(self.read_instruction_u16(address)?),
+            0xb8 => Instruction::Invokestatic(self.read_instruction_u16(address)?),
+            0xb6 => Instruction::Invokevirtual(self.read_instruction_u16(address)?),
+            0x80 => Instruction::Ior,
+            0x70 => Instruction::Irem,
+            0xac => Instruction::Ireturn,
+            0x78 => Instruction::Ishl,
+            0x7a => Instruction::Ishr,
+            0x36 => Instruction::Istore(self.read_instruction_u8(address)?),
+            0x3b => Instruction::Istore_0,
+            0x3c => Instruction::Istore_1,
+            0x3d => Instruction::Istore_2,
+            0x3e => Instruction::Istore_3,   
+            0x64 => Instruction::Isub,
+            0x7c => Instruction::Iushr,
+            0x82 => Instruction::Ixor,
+            0xa8 => todo!("Jsr"),
+            0xc9 => todo!("Jsr_w"),
+            0x8a => Instruction::L2d,
+            0x89 => Instruction::L2f,
+            0x88 => Instruction::L2i,
+            0x61 => Instruction::Ladd,
+            0x2f => Instruction::Laload,
+            0x7f => Instruction::Land,
+            0x50 => Instruction::Lastore,
+            0x94 => Instruction::Lcmp,
+            0x09 => Instruction::Lconst_0,
+            0x0a => Instruction::Lconst_1,            
+            0x12 => Instruction::Ldc(self.read_instruction_u8(address)?),
+            0x13 => Instruction::Ldc_w(self.read_instruction_u16(address)?),
+            0x14 => Instruction::Ldc2_w(self.read_instruction_u16(address)?),
+            0x6d => Instruction::Ldiv,
+            0x16 => Instruction::Lload(self.read_instruction_u8(address)?),
+            0x1e => Instruction::Lload_0,
+            0x1f => Instruction::Lload_1,
+            0x20 => Instruction::Lload_2,
+            0x21 => Instruction::Lload_3,
+            0x69 => Instruction::Lmul,
+            0x75 => Instruction::Lneg,
+            0xab => todo!("Lookupswitch"),
+            0x81 => Instruction::Lor,
+            0x71 => Instruction::Lrem,
+            0xad => Instruction::Lreturn,
+            0x79 => Instruction::Lshl,
+            0x7b => Instruction::Lshr,
+            0x37 => Instruction::Lstore(self.read_instruction_u8(address)?),
+            0x3f => Instruction::Lstore_0,
+            0x40 => Instruction::Lstore_1,
+            0x41 => Instruction::Lstore_2,
+            0x42 => Instruction::Lstore_3,
+            0x65 => Instruction::Lsub,
+            0x7d => Instruction::Lushr,
+            0x83 => Instruction::Lxor,
+            0xc2 => Instruction::Monitorenter,
+            0xc3 => Instruction::Monitorexit,
+            0xc5 => Instruction::Multianewarray(
+                self.read_instruction_u16(address)?, self.read_instruction_u8(address)?
+            ),
+            0xbb => Instruction::New(self.read_instruction_u16(address)?),
+            0xbc => todo!("Newarray"),
+            0x00 => Instruction::Nop,
+            0x57 => Instruction::Pop,
+            0x58 => Instruction::Pop2,
+            0xb5 => Instruction::Putfield(self.read_instruction_u16(address)?),
+            0xb3 => Instruction::Putstatic(self.read_instruction_u16(address)?),
+            0xa9 => Instruction::Ret(self.read_instruction_u8(address)?),
+            0xb1 => Instruction::Return,
+            0x35 => Instruction::Saload,
+            0x56 => Instruction::Sastore,
+            0x11 => Instruction::Sipush(self.read_instruction_i16(address)?),
+            0x5f => Instruction::Swap,
+            0xaa => todo!("Tableswitch"),
+            0xc4 => todo!("Wide"),
+            _ => panic!("at the disco"), // refactor
+        };
+        Ok((instruction, current_address))
+    }
+
+    fn read_instruction_u8(&mut self, address: &mut u32) -> Result<u8> {
+        *address += 1;
+        self.byte_reader.read_u8().map_err(|e| e.into())
+    }
+
+    fn read_instruction_u16(&mut self, address: &mut u32) -> Result<u16>{
+        let index_byte1 = self.read_instruction_u8(address)? as u16;
+        let index_byte2 = self.read_instruction_u8(address)? as u16;
+        Ok((index_byte1 << 8) | index_byte2)
+    }
+
+    fn read_instruction_i8(&mut self, address: &mut u32) -> Result<i8> {
+        let byte = self.read_instruction_u8(address)?;
+        Ok(byte as i8)
+    }
+
+    fn read_instruction_i16(&mut self, address: &mut u32) -> Result<i16> {
+        let value = self.read_instruction_u16(address)?;
+        Ok(value as i16)
     }
 
     fn read_stack_map_table_attr(&mut self) -> Result<Attribute> {
@@ -462,4 +753,3 @@ impl<'a> ClassFileReader<'a> {
         Ok(Attribute::UserDefined(UserDefinedAttribute::new(name, info)))
     }
 }
-
