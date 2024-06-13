@@ -21,6 +21,7 @@ use crate::method::MethodDescriptor;
 use crate::method::MethodParsingError;
 use crate::predefined_attributes::Code;
 use crate::predefined_attributes::ConstantValue;
+use crate::predefined_attributes::SourceFile;
 use crate::predefined_attributes::StackMapFrame;
 use crate::predefined_attributes::StackMapTable;
 use crate::predefined_attributes::VerificationTypeInfo;
@@ -53,6 +54,9 @@ pub enum ClassReaderError {
     #[error("Frame type {0} is not supported")]
     #[non_exhaustive]
     InvalidStackMapFrameType(u8),
+    #[error("Attribute name index of the SourceFile attribute must represent the string 'SourceFile', actual: {0}")]
+    #[non_exhaustive]
+    InvalidSourceFileString(String),
     #[error("Error encountered during reading: {0}")]
     #[non_exhaustive]
     ReadError(#[from] ReadError),
@@ -745,6 +749,25 @@ impl<'a> ClassFileReader<'a> {
             types.push(verification_type);
         }
         Ok(types)
+    }
+
+    fn read_source_file_attr(&mut self) -> Result<Attribute> {
+        let attribute_name_index = self.byte_reader.read_u16()?;
+        match self.get_utf8(attribute_name_index) {
+            Ok(string) => {
+                if string != "SourceFile" {
+                    return Err(ClassReaderError::InvalidSourceFileString(string))
+                }
+            }
+            Err(err) => return Err(err.into())
+        };
+        let attribute_length = self.byte_reader.read_u32()?;
+        if attribute_length != 2 {
+            return Err(ClassReaderError::InvalidAttributeSize(attribute_length, 2));
+        }
+        let source_file_index = self.byte_reader.read_u16()?;
+        let file_name = self.get_utf8(source_file_index)?;
+        Ok(Attribute::SourceFile(SourceFile { file_name } ))
     }
 
     fn read_user_defined_attr(&mut self, name: String) -> Result<Attribute> {

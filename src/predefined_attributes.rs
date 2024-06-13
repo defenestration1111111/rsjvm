@@ -86,3 +86,10 @@ pub enum VerificationTypeInfo {
     Object { constant: Constant },
     Uninitialized { offset: u16 },
 }
+
+#[derive(Debug, Clone)]
+pub struct SourceFile {
+    pub file_name: String,
+}
+
+}
