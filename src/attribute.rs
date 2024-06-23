@@ -1,10 +1,12 @@
-use crate::predefined_attributes::{Code, ConstantValue, SourceFile, StackMapTable};
+use crate::predefined_attributes::{Code, ConstantValue, NestMembers, SourceFile, StackMapTable};
+use derive_more::From;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, From)]
 pub enum Attribute {
     ConstantValue(ConstantValue),
     Code(Code),
     StackMapTable(StackMapTable),
+    NestMembers(NestMembers),
     UserDefined(UserDefinedAttribute),
     SourceFile(SourceFile),
 }

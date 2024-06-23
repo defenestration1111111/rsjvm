@@ -1,4 +1,5 @@
 use crate::{attribute::Attribute, constant_pool::Constant, instruction::Instruction};
+use derive_more::From;
 
 #[derive(Debug, Clone)]
 pub struct ConstantValue {
@@ -73,6 +74,11 @@ pub enum StackMapFrame {
         stack: Vec<VerificationTypeInfo>,
     },
 }
+
+#[derive(Debug, Clone, From)]
+pub struct NestMembers {
+    pub names: Vec<String>,
+} 
 
 #[derive(Debug, Clone)]
 pub enum VerificationTypeInfo {

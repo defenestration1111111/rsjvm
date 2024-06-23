@@ -292,6 +292,15 @@ impl<'a> ClassFileReader<'a> {
         }
     }
 
+    fn check_utf8(&mut self, name_index: u16, string: &str) -> Result<()> {
+        let utf8 = self.get_utf8(name_index)?;
+        if utf8 == string {
+            Ok(())
+        } else {
+            Err(ClassReaderError::InvalidAttributeNameIndex(string.to_string(), utf8))
+        }
+    }
+
     fn get_class_name(&mut self, name_index: u16) -> Result<String> {
         let constant = self.class_file.constant_pool.get(name_index as usize)?;
         match constant {
@@ -749,6 +758,19 @@ impl<'a> ClassFileReader<'a> {
             types.push(verification_type);
         }
         Ok(types)
+    }
+
+    fn read_nest_members_attr(&mut self) -> Result<Attribute> {
+        let attribute_name_index = self.byte_reader.read_u16()?;
+        let _ = self.check_utf8(attribute_name_index, "NestMembers");
+        let attribute_length = self.byte_reader.read_u32()?;
+        let mut nest_members = Vec::new();
+        for _ in 0..attribute_length {
+            let class_index = self.byte_reader.read_u16()?;
+            let class_name = self.get_class_name(class_index)?;
+            nest_members.push(class_name);
+        }
+        Ok(NestMembers { names: nest_members }.into())
     }
 
     fn read_source_file_attr(&mut self) -> Result<Attribute> {
