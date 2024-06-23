@@ -8,6 +8,7 @@ edition = "2021"
 [dependencies]
 cesu8 = "1.1.0"
 clippy = "0.0.302"
+derive_more = "0.99.18"
 name-variant = "0.1.0"
 rustfmt = "0.10.0"
 strum = "0.26.2"
