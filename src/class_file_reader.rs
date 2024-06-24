@@ -762,8 +762,6 @@ impl<'a> ClassFileReader<'a> {
     }
 
     fn read_nest_members_attr(&mut self) -> Result<Attribute> {
-        let attribute_name_index = self.byte_reader.read_u16()?;
-        let _ = self.check_utf8(attribute_name_index, "NestMembers");
         let attribute_length = self.byte_reader.read_u32()?;
         let mut nest_members = Vec::new();
         for _ in 0..attribute_length {
@@ -775,8 +773,6 @@ impl<'a> ClassFileReader<'a> {
     }
 
     fn read_permitted_subclasses_attr(&mut self) -> Result<Attribute> {
-        let attribute_name_index = self.byte_reader.read_u16()?;
-        let _ = self.check_utf8(attribute_name_index, "PermittedSubclasses")?;
         let attribute_length = self.byte_reader.read_u32()?;
         let number_of_classes = self.byte_reader.read_u32()?;
         let mut permitted_subclasses = Vec::new();
@@ -789,15 +785,6 @@ impl<'a> ClassFileReader<'a> {
     }
 
     fn read_source_file_attr(&mut self) -> Result<Attribute> {
-        let attribute_name_index = self.byte_reader.read_u16()?;
-        match self.get_utf8(attribute_name_index) {
-            Ok(string) => {
-                if string != "SourceFile" {
-                    return Err(ClassReaderError::InvalidSourceFileString(string))
-                }
-            }
-            Err(err) => return Err(err.into())
-        };
         let attribute_length = self.byte_reader.read_u32()?;
         if attribute_length != 2 {
             return Err(ClassReaderError::InvalidAttributeSize(attribute_length, 2));
