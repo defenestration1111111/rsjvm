@@ -1,8 +1,7 @@
-use std::fmt::Display;
+use std::fmt::{write, Display};
 
 use crate::{
-    access_flag::ClassFileAccessFlags, class_file_version::ClassFileVersion,
-    constant_pool::ConstantPool, field::Field, method::Method,
+    access_flag::ClassFileAccessFlags, attribute::Attribute, class_file_version::ClassFileVersion, constant_pool::ConstantPool, field::Field, method::Method
 };
 
 #[derive(Debug, Default, Clone)]
@@ -15,6 +14,7 @@ pub struct ClassFile {
     pub interfaces: Vec<String>,
     pub fields: Vec<Field>,
     pub methods: Vec<Method>,
+    pub attributes: Vec<Attribute>,
 }
 
 impl Display for ClassFile {

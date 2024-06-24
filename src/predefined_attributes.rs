@@ -76,6 +76,11 @@ pub enum StackMapFrame {
 }
 
 #[derive(Debug, Clone, From)]
+pub struct NestHost {
+    pub name: String,
+}
+
+#[derive(Debug, Clone, From)]
 pub struct NestMembers {
     pub names: Vec<String>,
 } 

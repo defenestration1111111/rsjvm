@@ -21,6 +21,8 @@ use crate::method::MethodDescriptor;
 use crate::method::MethodParsingError;
 use crate::predefined_attributes::Code;
 use crate::predefined_attributes::ConstantValue;
+use crate::predefined_attributes::NestHost;
+use crate::predefined_attributes::NestMembers;
 use crate::predefined_attributes::PetrmittedSubclasses;
 use crate::predefined_attributes::SourceFile;
 use crate::predefined_attributes::StackMapFrame;
@@ -761,6 +763,16 @@ impl<'a> ClassFileReader<'a> {
         Ok(types)
     }
 
+    fn read_nest_host_attr(&mut self) -> Result<Attribute> {
+        let attribute_length = self.byte_reader.read_u32()?;
+        if attribute_length != 2 {
+            return Err(ClassReaderError::InvalidAttributeSize(attribute_length, 2));
+        }
+        let host_class_index = self.byte_reader.read_u16()?;
+        let host_name = self.get_class_name(host_class_index)?;
+        Ok(NestHost { name: host_name }.into())
+    }
+
     fn read_nest_members_attr(&mut self) -> Result<Attribute> {
         let attribute_length = self.byte_reader.read_u32()?;
         let mut nest_members = Vec::new();
@@ -798,5 +810,24 @@ impl<'a> ClassFileReader<'a> {
         let length = self.byte_reader.read_u32()?;
         let info = self.byte_reader.read_bytes(length as usize)?;
         Ok(Attribute::UserDefined(UserDefinedAttribute::new(name, info)))
+    }
+
+    fn read_class_attributes(&mut self) -> Result<()> {
+        let attributes_count = self.byte_reader.read_u16()?;
+        let mut attributes = Vec::new();
+        for _ in 0..attributes_count {
+            let name_index = self.byte_reader.read_u16()?;
+            let name = self.get_utf8(name_index)?;
+            let attr = match name.as_str() {
+                "NestHost" => self.read_nest_host_attr()?,
+                "NestMembers" => self.read_nest_members_attr()?,
+                "PermittedSubclasses" => self.read_permitted_subclasses_attr()?,
+                "SourceFile" => self.read_source_file_attr()?,
+                _ => self.read_user_defined_attr(name)?,
+            };
+            attributes.push(attr);
+        }
+        self.class_file.attributes = attributes;
+        Ok(())
     }
 }

@@ -1,5 +1,4 @@
-use crate::predefined_attributes::{Code, ConstantValue, NestMembers, SourceFile, StackMapTable};
-use crate::predefined_attributes::{Code, ConstantValue, NestMembers, PetrmittedSubclasses, SourceFile, StackMapTable};
+use crate::predefined_attributes::{Code, ConstantValue, NestHost, NestMembers, PetrmittedSubclasses, SourceFile, StackMapTable};
 use derive_more::From;
 
 #[derive(Debug, Clone, From)]
@@ -7,6 +6,7 @@ pub enum Attribute {
     ConstantValue(ConstantValue),
     Code(Code),
     StackMapTable(StackMapTable),
+    NestHost(NestHost),
     NestMembers(NestMembers),
     PermittedSubclasses(PetrmittedSubclasses),
     UserDefined(UserDefinedAttribute),

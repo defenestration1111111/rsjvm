@@ -40,7 +40,7 @@ impl Constant {
 
 #[derive(Debug, Default, Clone)]
 pub struct ConstantPool {
-    constants: Vec<Constant>,
+    pub constants: Vec<Constant>,
 }
 
 impl ConstantPool {
