@@ -21,6 +21,7 @@ use crate::method::MethodDescriptor;
 use crate::method::MethodParsingError;
 use crate::predefined_attributes::Code;
 use crate::predefined_attributes::ConstantValue;
+use crate::predefined_attributes::PetrmittedSubclasses;
 use crate::predefined_attributes::SourceFile;
 use crate::predefined_attributes::StackMapFrame;
 use crate::predefined_attributes::StackMapTable;
@@ -771,6 +772,20 @@ impl<'a> ClassFileReader<'a> {
             nest_members.push(class_name);
         }
         Ok(NestMembers { names: nest_members }.into())
+    }
+
+    fn read_permitted_subclasses_attr(&mut self) -> Result<Attribute> {
+        let attribute_name_index = self.byte_reader.read_u16()?;
+        let _ = self.check_utf8(attribute_name_index, "PermittedSubclasses")?;
+        let attribute_length = self.byte_reader.read_u32()?;
+        let number_of_classes = self.byte_reader.read_u32()?;
+        let mut permitted_subclasses = Vec::new();
+        for _ in 0..number_of_classes {
+            let class_index = self.byte_reader.read_u16()?;
+            let class_name = self.get_class_name(class_index)?;
+            permitted_subclasses.push(class_name);
+        }
+        Ok(PetrmittedSubclasses { names: permitted_subclasses }.into())
     }
 
     fn read_source_file_attr(&mut self) -> Result<Attribute> {

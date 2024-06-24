@@ -80,6 +80,11 @@ pub struct NestMembers {
     pub names: Vec<String>,
 } 
 
+#[derive(Debug, Clone, From)]
+pub struct PetrmittedSubclasses {
+    pub names: Vec<String>,
+}
+
 #[derive(Debug, Clone)]
 pub enum VerificationTypeInfo {
     Top,
