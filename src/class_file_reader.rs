@@ -731,7 +731,7 @@ impl<'a> ClassFileReader<'a> {
                 let stack = self.read_verification_types(stack_count)?;
                 Ok(StackMapFrame::FullFrame { frame_type, offset_delta, locals, stack })
             }
-            _ => return Err(ClassReaderError::InvalidStackMapFrameType(frame_type))
+            _ => Err(ClassReaderError::InvalidStackMapFrameType(frame_type))
         }
     }
 

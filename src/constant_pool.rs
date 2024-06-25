@@ -53,7 +53,7 @@ impl ConstantPool {
 
     pub fn get(&self, index: usize) -> Result<&Constant, ConstantPoolError> {
         match self.constants.get(index - 1) {
-            Some(constant) if matches!(constant, Constant::Unsuable) => Err(ConstantPoolError::UnsuableConstant(index)),
+            Some(Constant::Unsuable) => Err(ConstantPoolError::UnsuableConstant(index)),
             Some(constant) => Ok(constant),
             None => Err(ConstantPoolError::IndexOutOfBounds(index)),
         }

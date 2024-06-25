@@ -78,7 +78,7 @@ impl<'a> ByteReader<'a> {
 
     pub fn read_utf8(&mut self, len: u32) -> Result<Cow<str>> {
         let modified_utf_bytes = self.read_bytes(len as usize)?;
-        cesu8::from_java_cesu8(&modified_utf_bytes).map_err(|e| ReadError::Cesu8DecodingError(e))
+        cesu8::from_java_cesu8(modified_utf_bytes).map_err(ReadError::Cesu8DecodingError)
     }
 
     pub fn snippet(&self) -> Vec<u8> {
