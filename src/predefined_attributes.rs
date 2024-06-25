@@ -107,5 +107,3 @@ pub enum VerificationTypeInfo {
 pub struct SourceFile {
     pub file_name: String,
 }
-
-}
