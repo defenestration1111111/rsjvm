@@ -1,4 +1,4 @@
-use std::fmt::{write, Display};
+use std::fmt::Display;
 
 use crate::{
     access_flag::ClassFileAccessFlags, attribute::Attribute, class_file_version::ClassFileVersion, constant_pool::ConstantPool, field::Field, method::Method

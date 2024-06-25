@@ -162,7 +162,7 @@ impl<'a> ClassFileReader<'a> {
 
     pub fn read_constant_pool(&mut self) -> Result<()> {
         let constant_pool_count = self.byte_reader.read_u16()?;
-        for mut index in 1..constant_pool_count {
+        for mut _index in 1..constant_pool_count {
             let tag = self.byte_reader.read_u8()?;
             let constant = match tag {
                 1 => self.read_string_constant()?,
@@ -188,7 +188,7 @@ impl<'a> ClassFileReader<'a> {
             self.class_file.constant_pool.add(constant.clone());
 
             if matches!(constant, Constant::Long(_) | Constant::Double(_)) {
-                index += 1;
+                _index += 1;
             }
         }
         Ok(())
@@ -431,7 +431,7 @@ impl<'a> ClassFileReader<'a> {
     }
 
     fn read_code_attr(&mut self) -> Result<Attribute> {
-        let length = self.byte_reader.read_u32()?;
+        let _length = self.byte_reader.read_u32()?;
         let max_stack = self.byte_reader.read_u16()?;
         let max_locals = self.byte_reader.read_u16()?;
         let code_length = self.byte_reader.read_u32()?;
@@ -443,6 +443,10 @@ impl<'a> ClassFileReader<'a> {
             let index = self.byte_reader.read_u8()?;
             instructions.push(self.read_instruction(index, &mut bytes_read)?);
         }
+
+        // Need to implement reading exception table & class attributes after reading underscored variables:
+        let _exception_table_length = self.byte_reader.read_u16();
+        let _attributes_count = self.byte_reader.read_u16();
         Ok(Attribute::Code(Code { max_stack, max_locals, code: instructions, exception_table: Vec::new(), attributes: Vec::new() }))
     }
 
@@ -681,7 +685,7 @@ impl<'a> ClassFileReader<'a> {
     }
 
     fn read_stack_map_table_attr(&mut self) -> Result<Attribute> {
-        let length = self.byte_reader.read_u32()?;
+        let _length = self.byte_reader.read_u32()?;
         let number_of_entries = self.byte_reader.read_u16()?;
         let mut frames = Vec::with_capacity(number_of_entries as usize);
         for _ in 0..number_of_entries {
@@ -785,7 +789,7 @@ impl<'a> ClassFileReader<'a> {
     }
 
     fn read_permitted_subclasses_attr(&mut self) -> Result<Attribute> {
-        let attribute_length = self.byte_reader.read_u32()?;
+        let _attribute_length = self.byte_reader.read_u32()?;
         let number_of_classes = self.byte_reader.read_u32()?;
         let mut permitted_subclasses = Vec::new();
         for _ in 0..number_of_classes {

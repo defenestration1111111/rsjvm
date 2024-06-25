@@ -1,4 +1,4 @@
-use std::{default, fmt::Display};
+use std::fmt::Display;
 
 type Result<T> = std::result::Result<T, FileVersionError>;
 
