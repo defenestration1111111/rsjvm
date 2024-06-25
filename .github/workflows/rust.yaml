@@ -32,6 +32,14 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v4
 
+      - name: Checkout config repository
+        uses: actions/checkout@v4
+        with:
+          repository: defenestration1111111/.configs
+          path: config-repo
+      - name: Copy rustfmt.toml
+        run: cp config-repo/rust/rustfmt.toml .    
+
       - name: Install stable
         uses: actions-rs/toolchain@v1
         with:
