@@ -17,7 +17,7 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly
+          toolchain: stable
           override: true
 
       - name: Cargo check
@@ -40,11 +40,11 @@ jobs:
       - name: Copy rustfmt.toml
         run: cp config-repo/rust/rustfmt.toml .    
 
-      - name: Install stable
+      - name: Install nightly
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: stable
+          toolchain: nightly
           override: true
           components: rustfmt, clippy
 
