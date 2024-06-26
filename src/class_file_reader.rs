@@ -1,33 +1,18 @@
 use std::fmt;
 
 use crate::access_flag::ClassFileAccessFlags;
-use crate::attribute::Attribute;
-use crate::attribute::UserDefinedAttribute;
-use crate::byte_reader::ByteReader;
-use crate::byte_reader::ReadError;
+use crate::attribute::{Attribute, UserDefinedAttribute};
+use crate::byte_reader::{ByteReader, ReadError};
 use crate::class_file::ClassFile;
 use crate::class_file_version::{ClassFileVersion, FileVersionError};
-use crate::constant_pool::Constant;
-use crate::constant_pool::ConstantPoolError;
-use crate::field::BaseType;
-use crate::field::Field;
-use crate::field::FieldAccessFlags;
-use crate::field::FieldError;
-use crate::field::FieldType;
+use crate::constant_pool::{Constant, ConstantPoolError};
+use crate::field::{BaseType, Field, FieldAccessFlags, FieldError, FieldType};
 use crate::instruction::Instruction;
-use crate::method::Method;
-use crate::method::MethodAccessFlags;
-use crate::method::MethodDescriptor;
-use crate::method::MethodParsingError;
-use crate::predefined_attributes::Code;
-use crate::predefined_attributes::ConstantValue;
-use crate::predefined_attributes::NestHost;
-use crate::predefined_attributes::NestMembers;
-use crate::predefined_attributes::PetrmittedSubclasses;
-use crate::predefined_attributes::SourceFile;
-use crate::predefined_attributes::StackMapFrame;
-use crate::predefined_attributes::StackMapTable;
-use crate::predefined_attributes::VerificationTypeInfo;
+use crate::method::{Method, MethodAccessFlags, MethodDescriptor, MethodParsingError};
+use crate::predefined_attributes::{
+    Code, ConstantValue, NestHost, NestMembers, PetrmittedSubclasses, SourceFile, StackMapFrame,
+    StackMapTable, VerificationTypeInfo,
+};
 
 type Result<T> = std::result::Result<T, ClassReaderError>;
 
@@ -41,10 +26,7 @@ pub enum ClassReaderError {
     TagNotSupported(u8),
     #[error("Unexpected constant: expected {expected:?}, found {actual:?}")]
     #[non_exhaustive]
-    UnexpectedConstant {
-        expected: String,
-        actual: String
-    },
+    UnexpectedConstant { expected: String, actual: String },
     #[error("Mismatched constant type for field type")]
     #[non_exhaustive]
     MismatchedConstantType(FieldType, u16),
@@ -57,9 +39,14 @@ pub enum ClassReaderError {
     #[error("Frame type {0} is not supported")]
     #[non_exhaustive]
     InvalidStackMapFrameType(u8),
-    #[error("Attribute name index of the SourceFile attribute must represent the string 'SourceFile', actual: {0}")]
+    #[error(
+        "Attribute name index of the SourceFile attribute must represent the string 'SourceFile', \
+         actual: {0}"
+    )]
     #[non_exhaustive]
     InvalidSourceFileString(String),
+    #[error("Invalid attribute name index, must represent the string '{0}', actual: {1}")]
+    InvalidAttributeNameIndex(String, String),
     #[error("Error encountered during reading: {0}")]
     #[non_exhaustive]
     ReadError(#[from] ReadError),
@@ -109,10 +96,7 @@ pub struct ClassFileReader<'a> {
 
 impl<'a> ClassFileReader<'a> {
     fn new(data: &'a [u8]) -> Self {
-        ClassFileReader {
-            byte_reader: ByteReader::new(data),
-            class_file: ClassFile::default(),
-        }
+        ClassFileReader { byte_reader: ByteReader::new(data), class_file: ClassFile::default() }
     }
 
     pub fn read_class(data: &[u8]) -> std::result::Result<ClassFile, ContextualError> {
@@ -291,7 +275,10 @@ impl<'a> ClassFileReader<'a> {
         let constant = self.class_file.constant_pool.get(name_index as usize)?;
         match constant {
             Constant::Utf8(utf8_content) => Ok(utf8_content.clone()),
-            _ => Err(ClassReaderError::UnexpectedConstant { expected: "Utf8".to_string(), actual: constant.name() }),
+            _ => Err(ClassReaderError::UnexpectedConstant {
+                expected: "Utf8".to_string(),
+                actual: constant.name(),
+            }),
         }
     }
 
@@ -308,7 +295,10 @@ impl<'a> ClassFileReader<'a> {
         let constant = self.class_file.constant_pool.get(name_index as usize)?;
         match constant {
             Constant::ClassIndex(class_index) => self.get_utf8(*class_index),
-            _ => Err(ClassReaderError::UnexpectedConstant { expected: "ClassIndex".to_string(), actual: constant.name() })
+            _ => Err(ClassReaderError::UnexpectedConstant {
+                expected: "ClassIndex".to_string(),
+                actual: constant.name(),
+            }),
         }
     }
 
@@ -355,11 +345,7 @@ impl<'a> ClassFileReader<'a> {
 
         let (descriptor_index, attributes_count) = self.byte_reader.read_pair_u16()?;
         let field_descriptor_utf8 = self.get_utf8(descriptor_index)?;
-        let type_descriptor = FieldType::try_from(
-                &mut field_descriptor_utf8
-                .chars()
-                .peekable()
-        )?;
+        let type_descriptor = FieldType::try_from(&mut field_descriptor_utf8.chars().peekable())?;
 
         let mut attributes = Vec::new();
         for _ in 0..attributes_count {
@@ -390,11 +376,8 @@ impl<'a> ClassFileReader<'a> {
         let name = self.get_utf8(name_index)?;
 
         let (descriptor_index, attributes_count) = self.byte_reader.read_pair_u16()?;
-        let type_descriptor = MethodDescriptor::try_from(
-            &mut self.get_utf8(descriptor_index)?
-                .chars()
-                .peekable() 
-        )?;
+        let type_descriptor =
+            MethodDescriptor::try_from(&mut self.get_utf8(descriptor_index)?.chars().peekable())?;
 
         let mut attributes = Vec::with_capacity(attributes_count as usize);
         for _ in 0..attributes_count {
@@ -417,15 +400,27 @@ impl<'a> ClassFileReader<'a> {
         let constantvalue_index = self.byte_reader.read_u16()?;
         let constant_value = self.class_file.constant_pool.get(constantvalue_index as usize)?;
         match (field_type.clone(), constant_value) {
-            (FieldType::Base(BaseType::Int), Constant::Integer(_)) |
-            (FieldType::Base(BaseType::Short), Constant::Integer(_)) |
-            (FieldType::Base(BaseType::Char), Constant::Integer(_)) |
-            (FieldType::Base(BaseType::Byte), Constant::Integer(_)) |
-            (FieldType::Base(BaseType::Boolean), Constant::Integer(_)) => Ok(Attribute::ConstantValue(ConstantValue::new(constant_value.clone()))),
-            (FieldType::Base(BaseType::Float), Constant::Float(_)) => Ok(Attribute::ConstantValue(ConstantValue::new(constant_value.clone()))),
-            (FieldType::Base(BaseType::Long), Constant::Long(_)) => Ok(Attribute::ConstantValue(ConstantValue::new(constant_value.clone()))),
-            (FieldType::Base(BaseType::Double), Constant::Double(_)) => Ok(Attribute::ConstantValue(ConstantValue::new(constant_value.clone()))),
-            (FieldType::Object(ref class_name), Constant::Utf8(_)) if class_name == "java/lang/String" => Ok(Attribute::ConstantValue(ConstantValue::new(constant_value.clone()))),
+            (FieldType::Base(BaseType::Int), Constant::Integer(_))
+            | (FieldType::Base(BaseType::Short), Constant::Integer(_))
+            | (FieldType::Base(BaseType::Char), Constant::Integer(_))
+            | (FieldType::Base(BaseType::Byte), Constant::Integer(_))
+            | (FieldType::Base(BaseType::Boolean), Constant::Integer(_)) => {
+                Ok(Attribute::ConstantValue(ConstantValue::new(constant_value.clone())))
+            }
+            (FieldType::Base(BaseType::Float), Constant::Float(_)) => {
+                Ok(Attribute::ConstantValue(ConstantValue::new(constant_value.clone())))
+            }
+            (FieldType::Base(BaseType::Long), Constant::Long(_)) => {
+                Ok(Attribute::ConstantValue(ConstantValue::new(constant_value.clone())))
+            }
+            (FieldType::Base(BaseType::Double), Constant::Double(_)) => {
+                Ok(Attribute::ConstantValue(ConstantValue::new(constant_value.clone())))
+            }
+            (FieldType::Object(ref class_name), Constant::Utf8(_))
+                if class_name == "java/lang/String" =>
+            {
+                Ok(Attribute::ConstantValue(ConstantValue::new(constant_value.clone())))
+            }
             _ => Err(ClassReaderError::MismatchedConstantType(field_type, constantvalue_index)),
         }
     }
@@ -444,10 +439,17 @@ impl<'a> ClassFileReader<'a> {
             instructions.push(self.read_instruction(index, &mut bytes_read)?);
         }
 
-        // Need to implement reading exception table & class attributes after reading underscored variables:
+        // Need to implement reading exception table & class attributes after reading
+        // underscored variables:
         let _exception_table_length = self.byte_reader.read_u16();
         let _attributes_count = self.byte_reader.read_u16();
-        Ok(Attribute::Code(Code { max_stack, max_locals, code: instructions, exception_table: Vec::new(), attributes: Vec::new() }))
+        Ok(Attribute::Code(Code {
+            max_stack,
+            max_locals,
+            code: instructions,
+            exception_table: Vec::new(),
+            attributes: Vec::new(),
+        }))
     }
 
     fn read_instruction(&mut self, index: u8, address: &mut u32) -> Result<(Instruction, u32)> {
@@ -575,7 +577,10 @@ impl<'a> ClassFileReader<'a> {
             0x9e => Instruction::Ifle(self.byte_reader.read_u16()?),
             0xc7 => Instruction::Ifnonnull(self.byte_reader.read_u16()?),
             0xc6 => Instruction::Ifnull(self.byte_reader.read_u16()?),
-            0x84 => Instruction::Iinc(self.read_instruction_u8(address)?, self.read_instruction_i8(address)?),
+            0x84 => Instruction::Iinc(
+                self.read_instruction_u8(address)?,
+                self.read_instruction_i8(address)?,
+            ),
             0x15 => Instruction::Iload(self.read_instruction_u8(address)?),
             0x1a => Instruction::Iload_0,
             0x1b => Instruction::Iload_1,
@@ -597,7 +602,7 @@ impl<'a> ClassFileReader<'a> {
             0x3b => Instruction::Istore_0,
             0x3c => Instruction::Istore_1,
             0x3d => Instruction::Istore_2,
-            0x3e => Instruction::Istore_3,   
+            0x3e => Instruction::Istore_3,
             0x64 => Instruction::Isub,
             0x7c => Instruction::Iushr,
             0x82 => Instruction::Ixor,
@@ -612,7 +617,7 @@ impl<'a> ClassFileReader<'a> {
             0x50 => Instruction::Lastore,
             0x94 => Instruction::Lcmp,
             0x09 => Instruction::Lconst_0,
-            0x0a => Instruction::Lconst_1,            
+            0x0a => Instruction::Lconst_1,
             0x12 => Instruction::Ldc(self.read_instruction_u8(address)?),
             0x13 => Instruction::Ldc_w(self.read_instruction_u16(address)?),
             0x14 => Instruction::Ldc2_w(self.read_instruction_u16(address)?),
@@ -641,7 +646,8 @@ impl<'a> ClassFileReader<'a> {
             0xc2 => Instruction::Monitorenter,
             0xc3 => Instruction::Monitorexit,
             0xc5 => Instruction::Multianewarray(
-                self.read_instruction_u16(address)?, self.read_instruction_u8(address)?
+                self.read_instruction_u16(address)?,
+                self.read_instruction_u8(address)?,
             ),
             0xbb => Instruction::New(self.read_instruction_u16(address)?),
             0xbc => todo!("Newarray"),
@@ -668,7 +674,7 @@ impl<'a> ClassFileReader<'a> {
         self.byte_reader.read_u8().map_err(|e| e.into())
     }
 
-    fn read_instruction_u16(&mut self, address: &mut u32) -> Result<u16>{
+    fn read_instruction_u16(&mut self, address: &mut u32) -> Result<u16> {
         let index_byte1 = self.read_instruction_u8(address)? as u16;
         let index_byte2 = self.read_instruction_u8(address)? as u16;
         Ok((index_byte1 << 8) | index_byte2)
@@ -707,7 +713,11 @@ impl<'a> ClassFileReader<'a> {
             247 => {
                 let offset_delta = self.byte_reader.read_u16()?;
                 let stack = self.read_verification_type()?;
-                Ok(StackMapFrame::SameLocals1StackItemFrameExtended { frame_type, offset_delta, stack })
+                Ok(StackMapFrame::SameLocals1StackItemFrameExtended {
+                    frame_type,
+                    offset_delta,
+                    stack,
+                })
             }
             248..=250 => {
                 let offset_delta = self.byte_reader.read_u16()?;
@@ -731,7 +741,7 @@ impl<'a> ClassFileReader<'a> {
                 let stack = self.read_verification_types(stack_count)?;
                 Ok(StackMapFrame::FullFrame { frame_type, offset_delta, locals, stack })
             }
-            _ => Err(ClassReaderError::InvalidStackMapFrameType(frame_type))
+            _ => Err(ClassReaderError::InvalidStackMapFrameType(frame_type)),
         }
     }
 
@@ -754,7 +764,7 @@ impl<'a> ClassFileReader<'a> {
                 let offset = self.byte_reader.read_u16()?;
                 VerificationTypeInfo::Uninitialized { offset }
             }
-            _ => return Err(ClassReaderError::InvalidVerificationType(tag))
+            _ => return Err(ClassReaderError::InvalidVerificationType(tag)),
         })
     }
 
@@ -807,7 +817,7 @@ impl<'a> ClassFileReader<'a> {
         }
         let source_file_index = self.byte_reader.read_u16()?;
         let file_name = self.get_utf8(source_file_index)?;
-        Ok(Attribute::SourceFile(SourceFile { file_name } ))
+        Ok(Attribute::SourceFile(SourceFile { file_name }))
     }
 
     fn read_user_defined_attr(&mut self, name: String) -> Result<Attribute> {

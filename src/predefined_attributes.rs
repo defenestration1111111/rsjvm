@@ -1,5 +1,8 @@
-use crate::{attribute::Attribute, constant_pool::Constant, instruction::Instruction};
 use derive_more::From;
+
+use crate::attribute::Attribute;
+use crate::constant_pool::Constant;
+use crate::instruction::Instruction;
 
 #[derive(Debug, Clone)]
 pub struct ConstantValue {
@@ -83,7 +86,7 @@ pub struct NestHost {
 #[derive(Debug, Clone, From)]
 pub struct NestMembers {
     pub names: Vec<String>,
-} 
+}
 
 #[derive(Debug, Clone, From)]
 pub struct PetrmittedSubclasses {

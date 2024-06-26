@@ -1,8 +1,11 @@
 use std::fmt::Display;
 
-use crate::{
-    access_flag::ClassFileAccessFlags, attribute::Attribute, class_file_version::ClassFileVersion, constant_pool::ConstantPool, field::Field, method::Method
-};
+use crate::access_flag::ClassFileAccessFlags;
+use crate::attribute::Attribute;
+use crate::class_file_version::ClassFileVersion;
+use crate::constant_pool::ConstantPool;
+use crate::field::Field;
+use crate::method::Method;
 
 #[derive(Debug, Default, Clone)]
 pub struct ClassFile {

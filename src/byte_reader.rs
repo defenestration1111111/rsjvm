@@ -82,17 +82,16 @@ impl<'a> ByteReader<'a> {
     }
 
     pub fn snippet(&self) -> Vec<u8> {
-        let start = if self.prev_pos > 1 { self.prev_pos - 2} else { 0 };
-        let end = if self.pos + 2 <= self.buf.len() { self.pos + 1} else {self.buf.len() - 1};
+        let start = if self.prev_pos > 1 { self.prev_pos - 2 } else { 0 };
+        let end = if self.pos + 2 <= self.buf.len() { self.pos + 1 } else { self.buf.len() - 1 };
         self.buf[start..=end].to_vec()
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::byte_reader::ReadError;
-
     use super::ByteReader;
+    use crate::byte_reader::ReadError;
 
     #[test]
     fn test_magic_success() {

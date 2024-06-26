@@ -1,6 +1,8 @@
-use std::{iter::Peekable, str::Chars};
+use std::iter::Peekable;
+use std::str::Chars;
 
-use crate::{attribute::Attribute, field::{FieldError, FieldType}};
+use crate::attribute::Attribute;
+use crate::field::{FieldError, FieldType};
 
 type Result<T> = std::result::Result<T, MethodParsingError>;
 
@@ -86,15 +88,15 @@ impl MethodAccessFlags {
             flags.push(MethodFlag::Native);
         }
 
-        if mask & 0x0400 != 0 { 
+        if mask & 0x0400 != 0 {
             flags.push(MethodFlag::Abstract);
         }
 
-        if mask & 0x0800 != 0 { 
+        if mask & 0x0800 != 0 {
             flags.push(MethodFlag::Strict);
         }
 
-        if mask & 0x1000 != 0 { 
+        if mask & 0x1000 != 0 {
             flags.push(MethodFlag::Synthetic);
         }
 
@@ -111,7 +113,7 @@ pub struct MethodDescriptor(ParameterDescriptor, ReturnDescriptor);
 impl MethodDescriptor {
     pub fn try_from(chars: &mut Peekable<Chars>) -> Result<MethodDescriptor> {
         if chars.next() != Some('(') {
-            return Err(MethodParsingError::NoOpeningBracket)
+            return Err(MethodParsingError::NoOpeningBracket);
         }
 
         let mut parameters = Vec::new();
@@ -123,7 +125,7 @@ impl MethodDescriptor {
         }
 
         if chars.next() != Some(')') {
-            return Err(MethodParsingError::NoClosingBracket)
+            return Err(MethodParsingError::NoClosingBracket);
         }
 
         let return_type = match chars.peek() {
@@ -131,7 +133,7 @@ impl MethodDescriptor {
                 chars.next();
                 ReturnDescriptor::VoidDescriptor
             }
-            _ => ReturnDescriptor::FieldType(FieldType::try_from(chars)?)
+            _ => ReturnDescriptor::FieldType(FieldType::try_from(chars)?),
         };
         Ok(MethodDescriptor(ParameterDescriptor(parameters), return_type))
     }
@@ -148,9 +150,8 @@ pub struct VoidDescriptor;
 
 #[cfg(test)]
 mod tests {
-    use crate::field::BaseType;
-
     use super::*;
+    use crate::field::BaseType;
 
     #[test]
     fn test_valid_method_descriptor() {
@@ -183,10 +184,8 @@ mod tests {
     #[test]
     fn no_parameters_method_descriptor_success() {
         let descriptor = "()V";
-        let expected = MethodDescriptor(
-            ParameterDescriptor(vec![]),
-            ReturnDescriptor::VoidDescriptor,
-        );
+        let expected =
+            MethodDescriptor(ParameterDescriptor(vec![]), ReturnDescriptor::VoidDescriptor);
 
         let result = MethodDescriptor::try_from(&mut descriptor.chars().peekable());
         assert_eq!(result.unwrap(), expected);

@@ -1,4 +1,5 @@
-use std::{iter::{from_fn, Peekable}, str::Chars};
+use std::iter::{from_fn, Peekable};
+use std::str::Chars;
 
 use crate::attribute::Attribute;
 
@@ -15,7 +16,6 @@ pub enum FieldError {
     InvalidDescriptor,
 }
 
-
 #[derive(Debug, Clone)]
 pub struct Field {
     flags: FieldAccessFlags,
@@ -25,7 +25,12 @@ pub struct Field {
 }
 
 impl Field {
-    pub fn new(flags: FieldAccessFlags, name: String, type_descriptor: FieldType, attributes: Vec<Attribute>) -> Self {
+    pub fn new(
+        flags: FieldAccessFlags,
+        name: String,
+        type_descriptor: FieldType,
+        attributes: Vec<Attribute>,
+    ) -> Self {
         Field { flags, name, type_descriptor, attributes }
     }
 }
@@ -87,7 +92,6 @@ impl FieldAccessFlags {
             flags.push(AccessFlag::Enum);
         }
 
-        
         FieldAccessFlags { flags }
     }
 }
@@ -134,7 +138,7 @@ impl FieldType {
                 let element_type = FieldType::try_from(chars)?;
                 Ok(FieldType::Array(Box::new(element_type)))
             }
-            _ => Err(FieldError::InvalidDescriptor)
+            _ => Err(FieldError::InvalidDescriptor),
         }
     }
 }
@@ -163,7 +167,9 @@ mod tests {
     fn int_array_multidimensional_success() {
         assert_eq!(
             FieldType::try_from(&mut "[[[I".chars().peekable()).unwrap(),
-            FieldType::Array(Box::new(FieldType::Array(Box::new(FieldType::Array(Box::new(FieldType::Base(BaseType::Int)))))))
+            FieldType::Array(Box::new(FieldType::Array(Box::new(FieldType::Array(Box::new(
+                FieldType::Base(BaseType::Int)
+            ))))))
         );
     }
 }

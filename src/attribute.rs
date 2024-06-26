@@ -1,5 +1,8 @@
-use crate::predefined_attributes::{Code, ConstantValue, NestHost, NestMembers, PetrmittedSubclasses, SourceFile, StackMapTable};
 use derive_more::From;
+
+use crate::predefined_attributes::{
+    Code, ConstantValue, NestHost, NestMembers, PetrmittedSubclasses, SourceFile, StackMapTable,
+};
 
 #[derive(Debug, Clone, From)]
 pub enum Attribute {
