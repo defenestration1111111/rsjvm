@@ -83,6 +83,6 @@ jobs:
           override: true
 
       - name: Cargo test
-        uses: actions-rs/toolchain@v1
+        uses: actions-rs/cargo@v1
         with:
           command: test
