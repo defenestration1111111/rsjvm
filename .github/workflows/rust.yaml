@@ -25,36 +25,40 @@ jobs:
         with:
           command: check
 
-  lints:
+  fmt-clippy:
     name: Fmt Clippy
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        toolchain: [stable, nightly]
     steps:
       - name: Checkout sources
         uses: actions/checkout@v4
 
-      - name: Checkout config repository
-        uses: actions/checkout@v4
         with:
           repository: defenestration1111111/.configs
           path: config-repo
-      - name: Copy rustfmt.toml
-        run: cp config-repo/rust/rustfmt.toml .    
 
-      - name: Install nightly
+      - name: Copy rustfmt.toml
+        run: cp config-repo/rust/rustfmt.toml .
+      
+      - name: Install toolchain
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly
+          toolchain: ${{ matrix.toolchain }}
           override: true
           components: rustfmt, clippy
 
       - name: Cargo fmt
+        if: matrix.toolchain == 'nightly'
         uses: actions-rs/cargo@v1
         with:
           command: fmt
           args: --all -- --check
 
       - name: Cargo clippy
+        if: matrix.toolchain == 'stable'
         uses: actions-rs/cargo@v1
         with:
           command: clippy
