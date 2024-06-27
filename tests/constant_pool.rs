@@ -1,8 +1,10 @@
-use rsjvm::{class_file_reader::ClassFileReader, constant_pool::Constant};
+use rsjvm::class_file_reader::ClassFileReader;
+use rsjvm::constant_pool::Constant;
 
 #[test]
 fn read_constant_pool() {
-    let class_file = ClassFileReader::read_class(include_bytes!("resources/ConstantPool.class")).unwrap();
+    let class_file =
+        ClassFileReader::read_class(include_bytes!("resources/ConstantPool.class")).unwrap();
 
     assert_eq!(
         class_file.constant_pool.constants,
