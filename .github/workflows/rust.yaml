@@ -67,3 +67,22 @@ jobs:
         with:
           command: fmt
           args: --all -- --check
+
+  test:
+    name: Test Suite
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v4
+
+      - name: Install stable
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
+      - name: Cargo test
+        uses: actions-rs/toolchain@v1
+        with:
+          command: test
