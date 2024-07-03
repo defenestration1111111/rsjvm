@@ -1,5 +1,5 @@
 [package]
-name = "rsjvm"
+name = "rsjvm-class-reader"
 version = "0.1.0"
 edition = "2021"
 
