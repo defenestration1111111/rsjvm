@@ -68,3 +68,73 @@ impl Frame {
         self.stack.pop()
     }
 }
+
+pub trait Operand: Copy {
+    fn pop(frame: &mut Frame) -> Self;
+    fn push(frame: &mut Frame, value: Self);
+}
+
+impl Operand for i32 {
+    fn pop(frame: &mut Frame) -> Self {
+        match frame.pop_operand() {
+            Value::Int(value) => value,
+            _ => panic!("Expected i32"),
+        }
+    }
+
+    fn push(frame: &mut Frame, value: Self) {
+        frame.push_operand(Value::Int(value));
+    }
+}
+
+impl Operand for i64 {
+    fn pop(frame: &mut Frame) -> Self {
+        match frame.pop_operand() {
+            Value::Long(value) => value,
+            _ => panic!("Expected i64"),
+        }
+    }
+
+    fn push(frame: &mut Frame, value: Self) {
+        frame.push_operand(Value::Long(value));
+    }
+}
+
+impl Operand for f32 {
+    fn pop(frame: &mut Frame) -> Self {
+        match frame.pop_operand() {
+            Value::Float(value) => value,
+            _ => panic!("Expected f32"),
+        }
+    }
+
+    fn push(frame: &mut Frame, value: Self) {
+        frame.push_operand(Value::Float(value));
+    }
+}
+
+impl Operand for f64 {
+    fn pop(frame: &mut Frame) -> Self {
+        match frame.pop_operand() {
+            Value::Double(value) => value,
+            _ => panic!("Expected f64"),
+        }
+    }
+
+    fn push(frame: &mut Frame, value: Self) {
+        frame.push_operand(Value::Double(value));
+    }
+}
+
+pub fn binary_op<T: Operand, F: Fn(T, T) -> T>(op: F, frame: &mut Frame) {
+    let second = T::pop(frame);
+    let first = T::pop(frame);
+    let result = op(first, second);
+    T::push(frame, result);
+}
+
+pub fn unary_op<T: Operand, F: Fn(T) -> T>(op: F, frame: &mut Frame) {
+    let value = T::pop(frame);
+    let result = op(value);
+    T::push(frame, result);
+}
