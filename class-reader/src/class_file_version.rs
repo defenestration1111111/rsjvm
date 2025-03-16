@@ -21,7 +21,11 @@ impl ClassFileVersion {
 
         let major_version = MajorVersion::try_from(major)?;
 
-        if major_version > JavaSE_11 && minor != 0 && minor != 65535 {
+        if major_version == JavaSE_1_1 && minor >= 3 {
+            Err(FileVersionError::UnsupportedMinorVersion(major, minor))
+        } else if major_version < JavaSE_12 && minor != 0 {
+            Err(FileVersionError::UnsupportedMinorVersion(major, minor))
+        } else if minor != 0 && minor != 65535 {
             Err(FileVersionError::UnsupportedMinorVersion(major, minor))
         } else {
             Ok(ClassFileVersion(major_version, minor))
@@ -56,6 +60,7 @@ pub enum MajorVersion {
     JavaSE_20,
     JavaSE_21,
     JavaSE_22,
+    JavaSE_23,
 }
 
 impl TryFrom<u16> for MajorVersion {
@@ -87,6 +92,7 @@ impl TryFrom<u16> for MajorVersion {
             64 => Ok(JavaSE_20),
             65 => Ok(JavaSE_21),
             66 => Ok(JavaSE_22),
+            67 => Ok(JavaSE_23),
             _ => Err(FileVersionError::UnsupportedMajorVersion(value)),
         }
     }
