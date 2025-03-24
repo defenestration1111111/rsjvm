@@ -9,6 +9,10 @@ jobs:
   check:
     name: Check
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        package: [class-reader, interpreter]
+
     steps:
       - name: Checkout sources
         uses: actions/checkout@v4
@@ -24,10 +28,15 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: check
+          args: --manifest-path ${{ matrix.package }}/Cargo.toml
 
   lints:
     name: Fmt Clippy
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        package: [class-reader, interpreter]
+
     steps:
       - name: Checkout sources
         uses: actions/checkout@v4
@@ -52,7 +61,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: clippy
-          args: -- -D warnings
+          args: --manifest-path ${{ matrix.package }}/Cargo.toml -- -D warnings
 
       - name: Install nightly
         uses: actions-rs/toolchain@v1
@@ -66,11 +75,15 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: fmt
-          args: --all -- --check
+          args: --manifest-path ${{ matrix.package }}/Cargo.toml --all -- --check
 
   test:
     name: Test Suite
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        package: [class-reader, interpreter]
+
     steps:
       - name: Checkout sources
         uses: actions/checkout@v4
@@ -85,4 +98,4 @@ jobs:
       - name: Cargo test
         uses: actions-rs/cargo@v1
         with:
-          command: test
+          command: --manifest-path ${{ matrix.package }}/Cargo.toml
