@@ -91,7 +91,6 @@ impl<'a> ByteReader<'a> {
 #[cfg(test)]
 mod tests {
     use super::ByteReader;
-    use crate::byte_reader::ReadError;
 
     #[test]
     fn test_magic_success() {
@@ -135,8 +134,8 @@ mod tests {
     fn test_snippet_success() {
         let data = [0x00].repeat(6);
         let mut reader = ByteReader::new(&data);
-        reader.read_u16();
-        reader.read_u16();
+        let _ = reader.read_u16();
+        let _ = reader.read_u16();
         assert_eq!(reader.snippet().len(), 6);
     }
 }

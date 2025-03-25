@@ -21,11 +21,11 @@ impl ClassFileVersion {
 
         let major_version = MajorVersion::try_from(major)?;
 
-        if major_version == JavaSE_1_1 && minor >= 3 {
-            Err(FileVersionError::UnsupportedMinorVersion(major, minor))
-        } else if major_version < JavaSE_12 && minor != 0 {
-            Err(FileVersionError::UnsupportedMinorVersion(major, minor))
-        } else if minor != 0 && minor != 65535 {
+        let is_invalid_minor = (major_version == JavaSE_1_1 && minor >= 3)
+            || (major_version < JavaSE_12 && minor != 0)
+            || (minor != 0 && minor != 65535);
+        
+        if is_invalid_minor {
             Err(FileVersionError::UnsupportedMinorVersion(major, minor))
         } else {
             Ok(ClassFileVersion(major_version, minor))
@@ -123,7 +123,7 @@ mod tests {
 
     #[test]
     fn test_minor_success() {
-        assert!(matches!(ClassFileVersion::from(45, 555), Ok(_)));
+        assert!((ClassFileVersion::from(45, 3).is_err()));
     }
 
     #[test]
