@@ -1,22 +1,27 @@
 use derive_more::From;
 
 use crate::predefined_attributes::{
-    Code, ConstantValue, NestHost, NestMembers, PetrmittedSubclasses, SourceFile, StackMapTable,
+    BootstrapMethods, Code, ConstantValue, LineNumberTable, LocalVariableTable,
+    LocalVariableTypeTable, NestHost, NestMembers, PetrmittedSubclasses, SourceFile, StackMapTable,
 };
 
-#[derive(Debug, Clone, From)]
+#[derive(Debug, Clone, From, PartialEq)]
 pub enum Attribute {
     ConstantValue(ConstantValue),
     Code(Code),
     StackMapTable(StackMapTable),
+    LineNumberTable(LineNumberTable),
+    LocalVariableTable(LocalVariableTable),
+    LocalVariableTypeTable(LocalVariableTypeTable),
     NestHost(NestHost),
     NestMembers(NestMembers),
     PermittedSubclasses(PetrmittedSubclasses),
     UserDefined(UserDefinedAttribute),
     SourceFile(SourceFile),
+    BootstrapMethods(BootstrapMethods),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct UserDefinedAttribute {
     name: String,
     info: Vec<u8>,

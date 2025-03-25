@@ -10,8 +10,10 @@ use crate::field::{BaseType, Field, FieldAccessFlags, FieldError, FieldType};
 use crate::instruction::Instruction;
 use crate::method::{Method, MethodAccessFlags, MethodDescriptor, MethodParsingError};
 use crate::predefined_attributes::{
-    Code, ConstantValue, NestHost, NestMembers, PetrmittedSubclasses, SourceFile, StackMapFrame,
-    StackMapTable, VerificationTypeInfo,
+    BootstrapMethod, BootstrapMethods, Code, ConstantValue, ExceptionHandler, LineNumber,
+    LineNumberTable, LocalVariable, LocalVariableTable, LocalVariableType, LocalVariableTypeTable,
+    NestHost, NestMembers, PetrmittedSubclasses, SourceFile, StackMapFrame, StackMapTable,
+    VerificationTypeInfo,
 };
 
 type Result<T> = std::result::Result<T, ClassReaderError>;
@@ -125,7 +127,7 @@ impl<'a> ClassFileReader<'a> {
         self.read_interfaces()?;
         self.read_fields()?;
         self.read_methods()?;
-        // self.read_class_attributes()?;
+        self.read_class_attributes()?;
         Ok(self.class_file.clone())
     }
 
@@ -311,7 +313,7 @@ impl<'a> ClassFileReader<'a> {
     fn read_super_class(&mut self) -> Result<()> {
         let name_index = self.byte_reader.read_u16()?;
         if name_index == 0 {
-            return Ok(())
+            return Ok(());
         }
         self.class_file.super_class = Some(self.get_class_name(name_index)?);
         Ok(())
@@ -395,7 +397,7 @@ impl<'a> ClassFileReader<'a> {
     fn read_constant_value_attr(&mut self, field_type: FieldType) -> Result<Attribute> {
         let length = self.byte_reader.read_u32()?;
         if length != 2 {
-            return Err(ClassReaderError::InvalidAttributeSize(length, 2))
+            return Err(ClassReaderError::InvalidAttributeSize(length, 2));
         }
         let constantvalue_index = self.byte_reader.read_u16()?;
         let constant_value = self.class_file.constant_pool.get(constantvalue_index as usize)?;
@@ -430,7 +432,6 @@ impl<'a> ClassFileReader<'a> {
         let max_stack = self.byte_reader.read_u16()?;
         let max_locals = self.byte_reader.read_u16()?;
         let code_length = self.byte_reader.read_u32()?;
-
         let mut instructions = Vec::new();
         let mut bytes_read = 0;
 
@@ -439,16 +440,38 @@ impl<'a> ClassFileReader<'a> {
             instructions.push(self.read_instruction(index, &mut bytes_read)?);
         }
 
-        // Need to implement reading exception table & class attributes after reading
-        // underscored variables:
-        let _exception_table_length = self.byte_reader.read_u16();
-        let _attributes_count = self.byte_reader.read_u16();
+        let exception_table_length = self.byte_reader.read_u16()?;
+        let mut exception_table = Vec::new();
+
+        for _ in 0..exception_table_length {
+            let start_pc = self.byte_reader.read_u16()?;
+            let end_pc = self.byte_reader.read_u16()?;
+            let handler_pc = self.byte_reader.read_u16()?;
+            let catch_type = self.byte_reader.read_u16()?;
+            exception_table.push(ExceptionHandler::new(start_pc, end_pc, handler_pc, catch_type));
+        }
+
+        let _attributes_count = self.byte_reader.read_u16()?;
+        let mut attributes = Vec::new();
+        for _ in 0.._attributes_count {
+            let name_index = self.byte_reader.read_u16()?;
+            let name = self.get_utf8(name_index)?;
+            let attr = match name.as_str() {
+                "LineNumberTable" => self.read_line_number_table_attr()?,
+                "LocalVariableTable" => self.read_local_variable_table_attr()?,
+                "LocalVariableTypeTable" => self.read_local_variable_type_table_attr()?,
+                "StackMapTable" => self.read_stack_map_table_attr()?,
+                _ => self.read_user_defined_attr(name)?,
+            };
+            attributes.push(attr);
+        }
+
         Ok(Attribute::Code(Code {
             max_stack,
             max_locals,
             code: instructions,
-            exception_table: Vec::new(),
-            attributes: Vec::new(),
+            exception_table,
+            attributes,
         }))
     }
 
@@ -590,6 +613,10 @@ impl<'a> ClassFileReader<'a> {
             0x74 => Instruction::Ineg,
             0xc1 => Instruction::Instanceof(self.read_instruction_u16(address)?),
             0xba => Instruction::Invokedynamic(self.read_instruction_u16(address)?),
+            0xb9 => Instruction::Invokeinterface(
+                self.read_instruction_u16(address)?,
+                self.read_instruction_u8(address)?,
+            ),
             0xb7 => Instruction::Invokespecial(self.read_instruction_u16(address)?),
             0xb8 => Instruction::Invokestatic(self.read_instruction_u16(address)?),
             0xb6 => Instruction::Invokevirtual(self.read_instruction_u16(address)?),
@@ -690,6 +717,75 @@ impl<'a> ClassFileReader<'a> {
         Ok(value as i16)
     }
 
+    fn read_exception_handler(&mut self) -> Result<ExceptionHandler> {
+        let start_pc = self.byte_reader.read_u16()?;
+        let end_pc = self.byte_reader.read_u16()?;
+        let handler_pc = self.byte_reader.read_u16()?;
+        let catch_type = self.byte_reader.read_u16()?;
+        Ok(ExceptionHandler::new(start_pc, end_pc, handler_pc, catch_type))
+    }
+
+    fn read_line_number_table_attr(&mut self) -> Result<Attribute> {
+        let _attribute_length = self.byte_reader.read_u32()?;
+        let line_number_table_length = self.byte_reader.read_u16()?;
+        let mut line_number_table = Vec::with_capacity(line_number_table_length as usize);
+        for _ in 0..line_number_table_length {
+            let start_pc = self.byte_reader.read_u16()?;
+            let line_number = self.byte_reader.read_u16()?;
+            line_number_table.push(LineNumber { start_pc, line_number });
+        }
+        Ok(Attribute::LineNumberTable(LineNumberTable::new(line_number_table)))
+    }
+
+    fn read_local_variable_table_attr(&mut self) -> Result<Attribute> {
+        let _attribute_length = self.byte_reader.read_u32()?;
+        let local_variable_table_length = self.byte_reader.read_u16()?;
+        let mut local_variable_table = Vec::with_capacity(local_variable_table_length as usize);
+        for _ in 0..local_variable_table_length {
+            let start_pc = self.byte_reader.read_u16()?;
+            let length = self.byte_reader.read_u16()?;
+            let name_index = self.byte_reader.read_u16()?;
+            let descriptor_index = self.byte_reader.read_u16()?;
+            let index = self.byte_reader.read_u16()?;
+            let _ = self.get_utf8(name_index)?;
+            let _ = self.get_utf8(descriptor_index)?;
+            local_variable_table.push(LocalVariable::new(
+                start_pc,
+                length,
+                name_index,
+                descriptor_index,
+                index,
+            ));
+        }
+        Ok(Attribute::LocalVariableTable(LocalVariableTable::new(local_variable_table)))
+    }
+
+    fn read_local_variable_type_table_attr(&mut self) -> Result<Attribute> {
+        let _attribute_length = self.byte_reader.read_u32()?;
+        let local_variable_type_table_length = self.byte_reader.read_u16()?;
+        let mut local_variable_type_table =
+            Vec::with_capacity(local_variable_type_table_length as usize);
+        for _ in 0..local_variable_type_table_length {
+            let start_pc = self.byte_reader.read_u16()?;
+            let length = self.byte_reader.read_u16()?;
+            let name_index = self.byte_reader.read_u16()?;
+            let signature_index = self.byte_reader.read_u16()?;
+            let index = self.byte_reader.read_u16()?;
+            let _ = self.get_utf8(name_index)?;
+            let _ = self.get_utf8(signature_index)?;
+            local_variable_type_table.push(LocalVariableType::new(
+                start_pc,
+                length,
+                name_index,
+                signature_index,
+                index,
+            ));
+        }
+        Ok(Attribute::LocalVariableTypeTable(LocalVariableTypeTable::new(
+            local_variable_type_table,
+        )))
+    }
+
     fn read_stack_map_table_attr(&mut self) -> Result<Attribute> {
         let _length = self.byte_reader.read_u32()?;
         let number_of_entries = self.byte_reader.read_u16()?;
@@ -777,6 +873,29 @@ impl<'a> ClassFileReader<'a> {
         Ok(types)
     }
 
+    fn read_bootstrap_methods_attr(&mut self) -> Result<Attribute> {
+        let _attribute_length = self.byte_reader.read_u32()?;
+        let num_bootstrap_methods = self.byte_reader.read_u16()?;
+        let mut bootstrap_methods = Vec::with_capacity(num_bootstrap_methods as usize);
+        for _ in 0..num_bootstrap_methods {
+            bootstrap_methods.push(self.read_bootstrap_method()?);
+        }
+        Ok(Attribute::BootstrapMethods(BootstrapMethods::new(bootstrap_methods)))
+    }
+
+    fn read_bootstrap_method(&mut self) -> Result<BootstrapMethod> {
+        let bootstrap_method_ref = self.byte_reader.read_u16()?;
+        self.expect_method_handle(bootstrap_method_ref)?;
+        let num_bootstrap_arguments = self.byte_reader.read_u16()?;
+        let mut bootstrap_arguments = Vec::with_capacity(num_bootstrap_arguments as usize);
+        for _ in 0..num_bootstrap_arguments {
+            let bootstrap_argument = self.byte_reader.read_u16()?;
+            self.expect_constant(bootstrap_argument)?;
+            bootstrap_arguments.push(bootstrap_argument);
+        }
+        Ok(BootstrapMethod { bootstrap_method_ref, bootstrap_arguments })
+    }
+
     fn read_nest_host_attr(&mut self) -> Result<Attribute> {
         let attribute_length = self.byte_reader.read_u32()?;
         if attribute_length != 2 {
@@ -788,9 +907,10 @@ impl<'a> ClassFileReader<'a> {
     }
 
     fn read_nest_members_attr(&mut self) -> Result<Attribute> {
-        let attribute_length = self.byte_reader.read_u32()?;
+        let _attribute_length = self.byte_reader.read_u32()?;
+        let classes_count = self.byte_reader.read_u16()?;
         let mut nest_members = Vec::new();
-        for _ in 0..attribute_length {
+        for _ in 0..classes_count {
             let class_index = self.byte_reader.read_u16()?;
             let class_name = self.get_class_name(class_index)?;
             nest_members.push(class_name);
@@ -800,7 +920,7 @@ impl<'a> ClassFileReader<'a> {
 
     fn read_permitted_subclasses_attr(&mut self) -> Result<Attribute> {
         let _attribute_length = self.byte_reader.read_u32()?;
-        let number_of_classes = self.byte_reader.read_u32()?;
+        let number_of_classes = self.byte_reader.read_u16()?;
         let mut permitted_subclasses = Vec::new();
         for _ in 0..number_of_classes {
             let class_index = self.byte_reader.read_u16()?;
@@ -837,11 +957,30 @@ impl<'a> ClassFileReader<'a> {
                 "NestMembers" => self.read_nest_members_attr()?,
                 "PermittedSubclasses" => self.read_permitted_subclasses_attr()?,
                 "SourceFile" => self.read_source_file_attr()?,
+                "BootstrapMethods" => self.read_bootstrap_methods_attr()?,
                 _ => self.read_user_defined_attr(name)?,
             };
             attributes.push(attr);
         }
         self.class_file.attributes = attributes;
         Ok(())
+    }
+
+    fn expect_method_handle(&self, index: u16) -> Result<()> {
+        match self.class_file.constant_pool.get(index as usize) {
+            Ok(Constant::MethodHandle(..)) => Ok(()),
+            Ok(actual) => Err(ClassReaderError::UnexpectedConstant {
+                expected: "MethodHandle".to_string(),
+                actual: actual.name(),
+            }),
+            Err(e) => Err(ClassReaderError::ConstantPoolError(e)),
+        }
+    }
+
+    fn expect_constant(&self, index: u16) -> Result<()> {
+        match self.class_file.constant_pool.get(index as usize) {
+            Ok(_) => Ok(()),
+            Err(e) => Err(ClassReaderError::ConstantPoolError(e)),
+        }
     }
 }
