@@ -98,4 +98,6 @@ jobs:
       - name: Cargo test
         uses: actions-rs/cargo@v1
         with:
-          command: --manifest-path ${{ matrix.package }}/Cargo.toml
+          command: test
+          args: --manifest-path ${{ matrix.package }}/Cargo.toml
+
