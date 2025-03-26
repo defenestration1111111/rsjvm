@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 #[derive(Debug)]
 pub enum Value {
     Int(i32),
@@ -17,14 +19,11 @@ struct OperandStack {
 
 impl OperandStack {
     pub fn new(capacity: usize) -> Self {
-        Self {
-            elements: Vec::with_capacity(capacity),
-            capacity,
-        }
+        Self { elements: Vec::with_capacity(capacity), capacity }
     }
 
     pub fn push(&mut self, value: Value) {
-        self.elements.push(value);        
+        self.elements.push(value);
     }
 
     pub fn pop(&mut self) -> Value {
@@ -43,7 +42,6 @@ impl OperandStack {
         self.capacity
     }
 }
-
 
 pub struct Frame {
     locals: Vec<Value>,
@@ -131,6 +129,13 @@ pub fn binary_op<T: Operand, F: Fn(T, T) -> T>(op: F, frame: &mut Frame) {
     let first = T::pop(frame);
     let result = op(first, second);
     T::push(frame, result);
+}
+
+pub fn binary_op_return<T: Operand, R: Operand>(op: impl Fn(T, T) -> R, frame: &mut Frame) {
+    let second = T::pop(frame);
+    let first = T::pop(frame);
+    let result = op(first, second);
+    R::push(frame, result);
 }
 
 pub fn unary_op<T: Operand, F: Fn(T) -> T>(op: F, frame: &mut Frame) {
