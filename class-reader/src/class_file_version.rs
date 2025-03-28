@@ -24,7 +24,7 @@ impl ClassFileVersion {
         let is_invalid_minor = (major_version == JavaSE_1_1 && minor >= 3)
             || (major_version < JavaSE_12 && minor != 0)
             || (minor != 0 && minor != 65535);
-        
+
         if is_invalid_minor {
             Err(FileVersionError::UnsupportedMinorVersion(major, minor))
         } else {

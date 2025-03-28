@@ -11,19 +11,27 @@ fn test_nest_host_nest_members_attrs() {
     let bytes = config.run();
 
     let host_file = ClassFileReader::read_class(&bytes.unwrap()).unwrap();
-    let member_file = ClassFileReader::read_class(&read_class_file(Path::new("target/classes/NestHostNestMembers$Inner.class")).unwrap()).unwrap();
+    let member_file = ClassFileReader::read_class(
+        &read_class_file(Path::new("target/classes/NestHostNestMembers$Inner.class")).unwrap(),
+    )
+    .unwrap();
 
-    let expected_nest_members = Attribute::NestMembers(NestMembers { names: vec!["NestHostNestMembers$Inner".to_string()] });
-    let expected_nest_host = Attribute::NestHost(NestHost { name: "NestHostNestMembers".to_string() });
+    let expected_nest_members = Attribute::NestMembers(NestMembers {
+        names: vec!["NestHostNestMembers$Inner".to_string()],
+    });
+    let expected_nest_host =
+        Attribute::NestHost(NestHost { name: "NestHostNestMembers".to_string() });
 
-    let actual_nest_members = host_file.attributes
+    let actual_nest_members = host_file
+        .attributes
         .iter()
         .find(|a| matches!(a, Attribute::NestMembers(_)))
         .expect("NestMembers attribute not found");
 
-    let actual_nest_host = member_file.attributes
+    let actual_nest_host = member_file
+        .attributes
         .iter()
-        .find(|a| matches!(a, Attribute::NestHost(_)))        
+        .find(|a| matches!(a, Attribute::NestHost(_)))
         .expect("NestHost attribute not found");
 
     assert_eq!(actual_nest_members, &expected_nest_members);

@@ -10,7 +10,9 @@ fn test_permitted_subclasses_attr() {
 
     let class_file = ClassFileReader::read_class(&bytes.unwrap()).unwrap();
 
-    let expected_permitted_subclasses = Attribute::PermittedSubclasses(PetrmittedSubclasses { names: vec!["Subclass".to_string(), "Subclass2".to_string()] });
+    let expected_permitted_subclasses = Attribute::PermittedSubclasses(PetrmittedSubclasses {
+        names: vec!["Subclass".to_string(), "Subclass2".to_string()],
+    });
 
     let actual_permitted_subclasses = class_file
         .attributes

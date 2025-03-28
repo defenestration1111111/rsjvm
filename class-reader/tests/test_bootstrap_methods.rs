@@ -22,7 +22,7 @@ fn test_bootstrap_methods_attr() {
     let actual_attr = class_file
         .attributes
         .iter()
-        .find(|a| matches!(a, Attribute::BootstrapMethods(_)))        
+        .find(|a| matches!(a, Attribute::BootstrapMethods(_)))
         .expect("BootstrapMethods attribute not found");
 
     assert_eq!(actual_attr, &expected_bootstrap_methods_attr);
