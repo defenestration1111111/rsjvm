@@ -1,7 +1,9 @@
+use std::error::Error;
 use std::fs::File;
 use std::io::{self, Read};
 use std::path::Path;
 use std::process::Command;
+use std::str;
 
 #[derive(Clone)]
 pub struct JavaCompilerOptions {
@@ -65,6 +67,26 @@ pub fn compile_java_file(path: &Path, options: &JavaCompilerOptions) -> io::Resu
     }
 
     Ok(())
+}
+
+pub fn check_javac_version() -> Result<(), Box<dyn Error>> {
+    let output = Command::new("javac").arg("-version").output()?;
+
+    let stderr = str::from_utf8(&output.stderr)?.trim();
+    let stdout = str::from_utf8(&output.stdout)?.trim();
+    let version_output = if !stderr.is_empty() { stderr } else { stdout };
+
+    let version_part =
+        version_output.split_whitespace().nth(1).ok_or("Failed to parse javac version")?;
+
+    let major_version: u32 =
+        version_part.split('.').next().ok_or("Invalid javac version format")?.parse()?;
+
+    if major_version < 22 {
+        Err(format!("javac version is too old: {} (requires 22 or higher)", major_version).into())
+    } else {
+        Ok(())
+    }
 }
 
 pub fn read_class_file(path: &Path) -> io::Result<Vec<u8>> {

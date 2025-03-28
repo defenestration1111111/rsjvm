@@ -1,6 +1,6 @@
 mod common;
 
-use common::CompileConfig;
+use common::{check_javac_version, CompileConfig};
 use rsjvm_class_reader::attribute::Attribute;
 use rsjvm_class_reader::class_file_reader::ClassFileReader;
 use rsjvm_class_reader::constant_pool::Constant;
@@ -12,6 +12,10 @@ use rsjvm_class_reader::predefined_attributes::{
 
 #[test]
 fn test_read_code_with_attrs() {
+    if let Err(e) = check_javac_version() {
+        panic!("{}", e);
+    }
+
     let config = CompileConfig::new("IntListControlFlowSingleFunction.java".to_string());
     let bytes = config.run();
 

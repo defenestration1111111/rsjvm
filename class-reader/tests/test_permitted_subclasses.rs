@@ -1,10 +1,16 @@
-use common::CompileConfig;
-use rsjvm_class_reader::{attribute::Attribute, class_file_reader::ClassFileReader, predefined_attributes::PetrmittedSubclasses};
+use common::{check_javac_version, CompileConfig};
+use rsjvm_class_reader::attribute::Attribute;
+use rsjvm_class_reader::class_file_reader::ClassFileReader;
+use rsjvm_class_reader::predefined_attributes::PetrmittedSubclasses;
 
 mod common;
 
 #[test]
 fn test_permitted_subclasses_attr() {
+    if let Err(e) = check_javac_version() {
+        panic!("{}", e);
+    }
+
     let config = CompileConfig::new("PermittedSubclasses.java".to_string());
     let bytes = config.run();
 

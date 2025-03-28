@@ -1,12 +1,18 @@
 use std::path::Path;
 
-use common::{read_class_file, CompileConfig};
-use rsjvm_class_reader::{attribute::Attribute, class_file_reader::ClassFileReader, predefined_attributes::{NestHost, NestMembers}};
+use common::{check_javac_version, read_class_file, CompileConfig};
+use rsjvm_class_reader::attribute::Attribute;
+use rsjvm_class_reader::class_file_reader::ClassFileReader;
+use rsjvm_class_reader::predefined_attributes::{NestHost, NestMembers};
 
 mod common;
 
 #[test]
 fn test_nest_host_nest_members_attrs() {
+    if let Err(e) = check_javac_version() {
+        panic!("{}", e);
+    }
+
     let config = CompileConfig::new("NestHostNestMembers.java".to_string());
     let bytes = config.run();
 
