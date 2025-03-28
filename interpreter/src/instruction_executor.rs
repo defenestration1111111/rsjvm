@@ -2,7 +2,7 @@
 
 use rsjvm_class_reader::instruction::Instruction::{self, *};
 
-use crate::frame::{binary_op, Frame, Value};
+use crate::frame::{Frame, Value, binary_op};
 
 struct InstructionExecutor;
 
