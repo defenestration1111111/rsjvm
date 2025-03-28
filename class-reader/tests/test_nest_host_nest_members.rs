@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use common::{check_javac_version, read_class_file, CompileConfig};
+use common::{CompileConfig, check_javac_version, read_class_file};
 use rsjvm_class_reader::attribute::Attribute;
 use rsjvm_class_reader::class_file_reader::ClassFileReader;
 use rsjvm_class_reader::predefined_attributes::{NestHost, NestMembers};

@@ -1,4 +1,4 @@
-use std::iter::{from_fn, Peekable};
+use std::iter::{Peekable, from_fn};
 use std::str::Chars;
 
 use crate::attribute::Attribute;

@@ -1,4 +1,4 @@
-use common::{check_javac_version, CompileConfig};
+use common::{CompileConfig, check_javac_version};
 use rsjvm_class_reader::attribute::Attribute;
 use rsjvm_class_reader::class_file_reader::ClassFileReader;
 use rsjvm_class_reader::predefined_attributes::PetrmittedSubclasses;
