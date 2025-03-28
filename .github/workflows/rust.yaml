@@ -95,6 +95,12 @@ jobs:
           toolchain: stable
           override: true
 
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: '23'
+          distribution: 'oracle'
+
       - name: Cargo test
         uses: actions-rs/cargo@v1
         with:
